@@ -259,7 +259,7 @@ class MS_WA_Broadcast {
 			case 'send_message':
 				$url 		= $this->apiurl;
 				$token 		= get_option( 'mswa_token' );
-				$numbers 	= $this->get_phone_numbers( $_POST['campaign'] );
+				$numbers 	= $this->get_phone_numbers( $_POST['campaign'], 'active' );
 			
 				$args 		= array(
 					'headers' => array(
@@ -580,19 +580,27 @@ class MS_WA_Broadcast {
 	/** 
 	 * Get phone numbers
 	 */
-	public function get_phone_numbers( $campaign_id = null ) {
+	public function get_phone_numbers( $campaign_id = null, $status = '' ) {
 		$numbers = array();
 		$args = array(
 			'post_type' 		=> 'ms_wa_member',
 			'posts_per_page' 	=> -1,
 		);
+
+		if ( in_array( $status, array( 'active', 'inactive' ) ) ) {
+			$args['meta_query']['relation'] = 'AND';
+			$args['meta_query'][] = array(
+				'key' 		=> '_mswa_member_status',
+				'value'		=> $status,
+				'compare'	=> '='
+			);
+		}
+
 		if ( $campaign_id != null && $campaign_id != 'all' ) {
-			$args['meta_query'] = array(
-				array(
-					'key' 		=> '_mswa_member_campaign_id',
-					'value'		=> $campaign_id,
-					'compare'	=> '='
-				)
+			$args['meta_query'][] = array(
+				'key' 		=> '_mswa_member_campaign_id',
+				'value'		=> $campaign_id,
+				'compare'	=> '='
 			);
 		}
 		$q = new WP_Query( $args );
@@ -613,7 +621,6 @@ class MS_WA_Broadcast {
 	public function send_message( $phones = '', $text = '' ) {
 		$url 		= $this->apiurl;
 		$token 		= get_option( 'mswa_token' );
-		$numbers 	= $this->get_phone_numbers( $_POST['campaign'] );
 
 		$args 		= array(
 			'headers' => array(
