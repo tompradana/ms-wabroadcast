@@ -3,6 +3,15 @@
 class MS_WA_Broadcast {
 	private $apiurl = 'https://fonnte.com/api/send_message.php';
 
+	private $settings = array( 
+		'mswa_token', 
+		'mswa_allow_samenumber', 
+		'mswa_wanotif', 
+		'mswa_wanotif_message',
+		'mswa_activation_message',
+		'mswa_deactivation_message'  
+	);
+
 	/**
 	 * Constructor
 	 */
@@ -34,6 +43,9 @@ class MS_WA_Broadcast {
 		add_action( 'ms_wabroadcast_campaign_after_fields', array( $this, 'ms_wabroadcast_shortcode_submit_button' ), 10, 2 );
 
 		add_shortcode( 'ms_wa_campaign', array( $this, 'ms_wabroadcast_shortcode' ) );
+
+		// webhook
+		add_action( 'rest_api_init', array( $this, 'ms_wabroadcast_rest_api' ) );
 	}
 
 	/**
@@ -174,6 +186,7 @@ class MS_WA_Broadcast {
 		$columns['campaign'] 	= __( 'Campaign', 'ms-wabroadcast' );
 		$columns['phone'] 		= __( 'Phone/Whatsapp', 'ms-wabroadcast' );
 		$columns['email'] 		= __( 'Email Address', 'ms-wabroadcast' );
+		$columns['status'] 	= __( 'Status', 'ms-wabroadcast' );
 		$columns['date']		= __( 'Date Registered', 'ms-wabroadcast' );
 		return $columns;
 	}
@@ -215,19 +228,19 @@ class MS_WA_Broadcast {
 				else 
 					echo '-';
 				break;
-			case 'phone':
-				$phone = get_post_meta( $post_id, $key = '_mswa_member_phone', true );
-				if ( $phone ) 
-					echo $phone;
-				else 
-					echo '-';
-				break;
 			case 'email':
 				$email = get_post_meta( $post_id, $key = '_mswa_member_email', true );
 				if ( $email ) 
 					echo $email;
 				else 
 					echo '-';
+				break;
+			case 'status':
+				$phone = get_post_meta( $post_id, $key = '_mswa_member_status', true );
+				if ( $phone == 'inactive' || false == $phone ) 
+					echo __( "Not active", 'ms-wabroadcast' ) . '<span style="display:inline-block; width:10px;height:10px;border-radius:500px;background-color:red;margin-left:10px"></span>';
+				else 
+					echo __( "Active", 'ms-wabroadcast' ) . '<span style="display:inline-block; width:10px;height:10px;border-radius:500px;background-color:green;margin-left:10px"></span>';
 				break;
 			case 'date':
 				echo get_the_date( 'c', $post_id );
@@ -280,7 +293,7 @@ class MS_WA_Broadcast {
 
 				break;
 			case 'save_settings':
-				$settings = array( 'mswa_token', 'mswa_allow_samenumber', 'mswa_wanotif', 'mswa_wanotif_message' );
+				$settings = $this->settings;
 				foreach( $settings as $key ) {
 					if ( isset( $_POST[$key] ) ) {
 						update_option( $key, esc_attr( $_POST[$key] ) );
@@ -325,6 +338,7 @@ class MS_WA_Broadcast {
 				    					'post_status'	=> 'publish',
 				    					'meta_input'	=> array(
 				    						'_mswa_member_campaign_id' 	=> $_POST['campaign_id'],
+				    						'_mswa_member_status' 		=> 'inactive',
 				    						'_mswa_member_name' 		=> ucfirst( $name ),
 				    						'_mswa_member_phone' 		=> $phone,
 				    						'_mswa_member_email' 		=> $email
@@ -493,6 +507,16 @@ class MS_WA_Broadcast {
 		}
 	}
 
+	public function write_log($log) {
+		if ( defined( 'WP_DEBUG' ) && true === WP_DEBUG ) {
+			if (is_array($log) || is_object($log)) {
+				error_log(print_r($log, true));
+			} else {
+				error_log($log);
+			}
+		}
+	}
+
 	/**
 	 * Check registered
 	 */
@@ -621,6 +645,104 @@ class MS_WA_Broadcast {
 		} else {
 			return false;
 		}
+	}
+
+	/**
+	 * Rest api
+	 */
+	public function ms_wabroadcast_rest_api() {
+		register_rest_route( 'mswabroadcast/v1', '/webhook', array(
+			'methods' => 'POST',
+			'callback' => array( $this, 'ms_wabroadcast_rest_api_handler' )
+		) );
+	}
+
+	public function ms_wabroadcast_rest_api_handler() {
+		if ( isset( $_POST['phone'] ) && isset( $_POST['message'] ) ) {
+			extract( $_POST );
+			$message = trim( strtolower( $message ) );
+			if ( 'ya' === $message ) {
+				$activate = $this->activate_member( $phone );
+				if ( '' <> get_option( 'mswa_activation_message' ) ) {
+					$message =  get_option( 'mswa_activation_message' );
+					echo $this->formatted_notification( $message, $activate );
+				}
+			} else if ( in_array( $message, array( 'stop', 'unsubscribe' ) ) ) {
+				$deactivate = $this->activate_member( $phone, false );
+				if ( '' <> get_option( 'mswa_deactivation_message' ) ) {
+					$message = get_option( 'mswa_deactivation_message' );
+					echo $this->formatted_notification( $message, $deactivate );
+				}
+			}
+		} else {
+			wp_send_json( array( 'code' => 400 ) );
+		}
+	}	
+
+	/**
+	 * Get member by phone
+	 */
+	public function get_member_id_by_phone( $phone ) {
+		$id = 0;
+		$q = new WP_Query( array(
+			'post_type' 		=> 'ms_wa_member',
+			'posts_per_page' 	=> 1,
+			'meta_query' 		=> array(
+				array(
+					'key' 		=> '_mswa_member_phone',
+					'value'		=> $phone,
+					'compare'	=> '='
+				)
+			)
+		) );
+		if ( $q->have_posts() ) {
+			while ( $q->have_posts() ) {
+				$q->the_post();
+				$id = get_the_ID();
+			}
+		}; wp_reset_postdata();
+		return $id;
+	}
+
+	/**
+	 * Activate member
+	 */
+	public function activate_member( $phone, $activate = true ) {
+		$data = array();
+		if ( !$this->is_phone_registered( $phone ) ) {
+			return false;
+		}
+		$id = $this->get_member_id_by_phone( $phone );
+		if ( $id !== 0 ) {
+			if ( $activate ) {
+				update_post_meta( $id, '_mswa_member_status', 'active' );	
+			} else {
+				update_post_meta( $id, '_mswa_member_status', 'inactive' );	
+			}
+			$data['id'] = $id;
+			$data['name'] = get_post_meta( get_the_ID(), '_mswa_member_name', true );
+			$data['phone'] = get_post_meta( get_the_ID(), '_mswa_member_phone', true );
+			$data['email'] = get_post_meta( get_the_ID(), '_mswa_member_email', true );
+			$data['status'] = get_post_meta( get_the_ID(), '_mswa_member_status', true );
+			$data['campaign_id'] = get_post_meta( get_the_ID(), '_mswa_member_campaign_id', true );
+		}
+		return $data;
+	}
+
+	/**
+	 * Formatted message
+	 */
+	public function formatted_notification( $message = '', $data = array() ) {
+		if ( $message && empty( $data ) ) {
+			return $message;
+		}
+
+		$message = str_replace( '{{name}}', $data['name'], $message );
+		$message = str_replace( '{{phone}}', $data['phone'], $message );
+		$message = str_replace( '{{email}}', $data['email'], $message );
+		$message = str_replace( '{{campaign_name}}', get_the_title($data['campaign_id']), $message );
+
+		return $message;
 	}
 }
 

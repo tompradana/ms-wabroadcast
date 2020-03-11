@@ -40,7 +40,7 @@
     }
 
     $(document).ready(function() {
-        $("#message").emojioneArea({
+        $("#message,#message2,#message3").emojioneArea({
             filtersPosition: 'bottom',
             pickerPosition: 'bottom'
         });
