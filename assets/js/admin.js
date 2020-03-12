@@ -70,16 +70,24 @@
         );
     });
 
+    let reset = false;
+    $('input[name="reset"]').on('click',function(){
+		reset = true;
+    });
+
     $('#settings-form').on('submit', function(e) {
         e.preventDefault();
 
         var $form = $(this);
         var data = $form.serializeArray();
-        data.push({ name: "request", value: "save_settings" });
+
+        if ( reset ) {
+        	data.push({ name: "request", value: "reset_settings" });
+        } else {
+        	data.push({ name: "request", value: "save_settings" });
+        }
 
         mswa_loading($form);
-
-        console.log(data);
 
         MS_WA_Request(
             mswa.ajax_url,
@@ -88,6 +96,9 @@
             function(response) {
                 console.log(response);
                 mswa_loading($form,false,response.message);
+                if ( reset ) {
+                	location.reload();
+                }
             },
             function(fail) {
                 console.log(fail.message);

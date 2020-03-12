@@ -52,7 +52,22 @@ Jika ini adalah kesalahan balas *YA* untuk berlangganan kembali.<?php } ?></text
 				</div>
 
 				<div class="field">
+					<label><?php _e( 'Default Info Message:', 'ms-wabroadcast' ); ?></label>
+					<textarea  id="message3" name="mswa_default_info_message"><?php if ( '' <> get_option( 'mswa_default_info_message' ) ) { echo get_option( 'mswa_default_info_message' ); } else { ?>1️⃣ Balas *YA* untuk berlangganan dari semua channel yang Anda ikuti.
+
+2️⃣ Balas *YA [IDCAMPAIGN]* untuk berlangganan dari channel tertentu yang Anda ikuti.
+
+3⃣ Balas *STOP* atau *UNSUBSCRIBE* untuk berhenti berlangganan dari semua channel.
+
+4⃣ Balas *STOP [IDCAMPAIGN]* atau *UNSUBSCRIBE [IDCAMPAIGN]* untuk berhenti berlangganan dari channel tertentu.
+
+5️⃣ Balas *INFO* untuk melihat daftar channel yang Anda ikuti.<?php } ?></textarea>
+					<small>Availabel tags: {{name}} {{phone}} {{email}} {{campaign_name}}</small>
+				</div>
+
+				<div class="field">
 					<?php submit_button( __( 'Save Settings', 'ms-wabroadcast' ), $type = 'primary', $name = 'submit', $wrap = false, $other_attributes = null ); ?>
+					<?php submit_button( __( 'Reset Settings', 'ms-wabroadcast' ), $type = 'secondary', $name = 'reset', $wrap = false, $other_attributes = array( 'style' => 'float:right;', 'onclick' => 'return confirm(\'Are you sure?\')' ) ); ?>
 				</div>
 			</form>
 		</div>

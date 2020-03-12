@@ -21,7 +21,7 @@
 
 				<div class="field">
 					<label><?php _e( 'Message:', 'ms-wabroadcast' ); ?></label>
-					<textarea required="true" id="message" name="message">Kirim pesan whatsappnya lewat admin wordpress 🤝.</textarea>
+					<textarea required="true" id="message" name="message">Broadcast message 🤝.</textarea>
 				</div>
 
 				<div class="field">

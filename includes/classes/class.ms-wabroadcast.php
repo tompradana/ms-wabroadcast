@@ -10,7 +10,8 @@ class MS_WA_Broadcast {
 		'mswa_auto_activate_member', 
 		'mswa_wanotif_message',
 		'mswa_activation_message',
-		'mswa_deactivation_message'  
+		'mswa_deactivation_message',
+		'mswa_default_info_message'
 	);
 
 	/**
@@ -306,6 +307,15 @@ class MS_WA_Broadcast {
 				$ajaxresponse['message'] = '✔️ Settings saved';
 				$ajaxresponse['results'] = $settings;
 				break;
+			case 'reset_settings':
+				$settings = $this->settings;
+				foreach( $settings as $key ) {
+					delete_option( $key );
+				};
+				$ajaxresponse['code'] = 200;
+				$ajaxresponse['message'] = '✔️ Settings has been reset';
+				$ajaxresponse['results'] = $settings;
+				break;
 			case 'submit_campaign':
 				if ( !wp_verify_nonce( $_REQUEST['mswa_submit_campaign_nonce'], 'mswa_submit_campaign' ) ) {
 					$ajaxresponse['message'] = 'Cheat\'in uh! :(';
@@ -331,40 +341,46 @@ class MS_WA_Broadcast {
 			    				$ajaxresponse['message'] = 'Phone number must be country code + phone number!';
 			    			} else {
 
-			    				if ( !$this->is_phone_registered( $phone ) || ( 'on' == get_option( 'mswa_allow_samenumber' ) && $this->is_phone_registered( $phone ) ) ) {
-				    				// insert member
-				    				$autoactivate = 'on' == get_option( 'mswa_auto_activate_member' ) ? 'active' : 'inactive';
-				    				$member = wp_insert_post( array(
-				    					'post_type' 	=> 'ms_wa_member',
-				    					'post_title'	=> $name,
-				    					'post_status'	=> 'publish',
-				    					'meta_input'	=> array(
-				    						'_mswa_member_campaign_id' 	=> $_POST['campaign_id'],
-				    						'_mswa_member_status' 		=> $autoactivate,
-				    						'_mswa_member_name' 		=> ucfirst( $name ),
-				    						'_mswa_member_phone' 		=> $phone,
-				    						'_mswa_member_email' 		=> $email
-				    					)
-				    				), true );
+			    				if ( !$this->is_phone_registered( $phone, $_POST['campaign_id'] ) || ( 'on' == get_option( 'mswa_allow_samenumber' ) && $this->is_phone_registered( $phone ) ) ) {
 
-				    				// ok
-				    				if ( !is_wp_error( $member ) ) {
-				    					// send
-					    				if ( 'on' ==  get_option( 'mswa_wanotif' ) && '' != get_option( 'mswa_wanotif_message' ) ) {
-					    					$message = get_option( 'mswa_wanotif_message' );
-					    					// {{name}} {{phone}} {{email}} {{campaign_name}}
-					    					$message = str_replace( '{{name}}', $name, $message );
-					    					$message = str_replace( '{{phone}}', $phone, $message );
-					    					$message = str_replace( '{{email}}', $email, $message );
-					    					$message = str_replace( '{{campaign_name}}', get_the_title($_POST['campaign_id']), $message );
-					    					$this->send_message( $phone, $message );
+			    					if ( ! $this->is_phone_registered( $phone, $_POST['campaign_id'] ) ) {
+					    				// insert member
+					    				$autoactivate = 'on' == get_option( 'mswa_auto_activate_member' ) ? 'active' : 'inactive';
+					    				$member = wp_insert_post( array(
+					    					'post_type' 	=> 'ms_wa_member',
+					    					'post_title'	=> $name,
+					    					'post_status'	=> 'publish',
+					    					'meta_input'	=> array(
+					    						'_mswa_member_campaign_id' 	=> $_POST['campaign_id'],
+					    						'_mswa_member_status' 		=> $autoactivate,
+					    						'_mswa_member_name' 		=> ucfirst( $name ),
+					    						'_mswa_member_phone' 		=> $phone,
+					    						'_mswa_member_email' 		=> $email
+					    					)
+					    				), true );
+
+					    				// ok
+					    				if ( !is_wp_error( $member ) ) {
+					    					// send
+						    				if ( 'on' ==  get_option( 'mswa_wanotif' ) && '' != get_option( 'mswa_wanotif_message' ) ) {
+						    					$message = get_option( 'mswa_wanotif_message' );
+						    					// {{name}} {{phone}} {{email}} {{campaign_name}}
+						    					$message = str_replace( '{{name}}', $name, $message );
+						    					$message = str_replace( '{{phone}}', $phone, $message );
+						    					$message = str_replace( '{{email}}', $email, $message );
+						    					$message = str_replace( '{{campaign_name}}', get_the_title($_POST['campaign_id']), $message );
+						    					$this->send_message( $phone, $message );
+						    				}
+
+					    					$ajaxresponse['code'] = 200;
+					    					$ajaxresponse['message'] = '✔️ Success';
+					    				} else {
+					    					$ajaxresponse['message'] = $member->get_error_message();
 					    				}
-
-				    					$ajaxresponse['code'] = 200;
-				    					$ajaxresponse['message'] = '✔️ Success';
-				    				} else {
-				    					$ajaxresponse['message'] = $member->get_error_message();
-				    				}
+					    			} else {
+					    				// Already registered
+				    					$ajaxresponse['message'] = 'Phone number already registered!';
+					    			}
 				    			} else {
 				    				// Already registered
 				    				$ajaxresponse['message'] = 'Phone number already registered!';
@@ -522,10 +538,10 @@ class MS_WA_Broadcast {
 	/**
 	 * Check registered
 	 */
-	public function is_phone_registered( $phone ) {
-		$q = new WP_Query( array(
+	public function is_phone_registered( $phone, $campaign_id = null ) {
+		$args = array(
 			'post_type' 		=> 'ms_wa_member',
-			'posts_per_page' 	=> 1,
+			'posts_per_page' 	=> -1,
 			'meta_query' 		=> array(
 				array(
 					'key' 		=> '_mswa_member_phone',
@@ -533,7 +549,20 @@ class MS_WA_Broadcast {
 					'compare'	=> '='
 				)
 			)
-		) );
+		);
+
+		if ( $campaign_id != null ) {
+			$args['posts_per_page'] = 1;
+			$args['meta_query']['relation'] = 'AND';
+			$args['meta_query'][] = array(
+				'key' 		=> '_mswa_member_campaign_id',
+				'value'		=> $campaign_id,
+				'compare'	=> '='
+			);
+		}
+
+		$q = new WP_Query( $args );
+
 		if ( $q->have_posts() ) {
 			wp_reset_postdata();
 			return true;
@@ -605,7 +634,9 @@ class MS_WA_Broadcast {
 				'compare'	=> '='
 			);
 		}
+
 		$q = new WP_Query( $args );
+
 		if ( $q->have_posts() ) {
 			while ( $q->have_posts() ) : $q->the_post();
 				if ( '' <> get_post_meta( get_the_ID(), '_mswa_member_phone', true ) ) {
@@ -668,35 +699,81 @@ class MS_WA_Broadcast {
 	}
 
 	public function ms_wabroadcast_rest_api_handler() {
-		if ( isset( $_POST['phone'] ) && isset( $_POST['message'] ) ) {
-			extract( $_POST );
+		header( 'Access-Control-Allow-Headers: Content-Type');
+        header( 'Content-Type: text/html; charset=UTF-8');
+		extract( $_POST );
+
+		if ( !$this->is_phone_registered( $phone ) ) {
+			echo __( 'Nomor Anda belum terdaftar', 'ms-wabroadcast' );
+		} else {
 			$message = trim( strtolower( $message ) );
-			if ( 'ya' === $message ) {
-				$activate = $this->activate_member( $phone );
-				if ( '' <> get_option( 'mswa_activation_message' ) ) {
-					$message =  get_option( 'mswa_activation_message' );
-					echo $this->formatted_notification( $message, $activate );
+			$message = preg_replace( '/\s+/', '', $message );
+			preg_match( '/(ya|stop|unsubscribe)\s?(\[(\d+)\])?$/', $message, $matches );
+
+			if ( 'info' === $message ) {
+				$c = array();
+				$q = new WP_Query( array(
+					'post_type' => 'ms_wa_member',
+					'post_per_page' => -1,
+					'meta_query' => array(
+						'relation' => 'AND',
+						array(
+							'key' => '_mswa_member_phone',
+							'value' => $phone
+						),
+					)
+				) );
+				if ( $q->have_posts() ) {
+					$i=1;while ( $q->have_posts() ) {
+						$q->the_post();
+						$id = get_post_meta( get_the_ID(), '_mswa_member_campaign_id', true );
+						$status = get_post_meta( get_the_ID(), '_mswa_member_status', true );
+						echo sprintf( '%s. [%s] %s, status: %s', $i++, $id, get_the_title(), $status ) . "\r\n";
+					}
+					wp_reset_postdata();
+				} else {
+					echo __( 'Channels not found', 'ms-wabroadcast' );
 				}
-			} else if ( in_array( $message, array( 'stop', 'unsubscribe' ) ) ) {
-				$deactivate = $this->activate_member( $phone, false );
-				if ( '' <> get_option( 'mswa_deactivation_message' ) ) {
-					$message = get_option( 'mswa_deactivation_message' );
-					echo $this->formatted_notification( $message, $deactivate );
+			} else if ( !empty( $matches ) ) {
+				$message = $matches[1];
+				$campaign_id = isset( $matches[3] ) ? $matches[3] : false;
+				$notif = '';
+				$activate = array();
+				if ( $message == 'ya' ) {
+					if ( $campaign_id !== false ) {
+						$activate = $this->activate_member( $phone, true, $campaign_id );
+					} else {
+						$activate = $this->activate_member( $phone, true, true );
+					}
+					$notif = get_option( 'mswa_activation_message' );
+				} else if ( in_array( $message, array( 'stop', 'unsubscribe' ) ) ) {
+					if ( $campaign_id !== false ) {
+						$activate = $this->activate_member( $phone, false, $campaign_id );
+					} else {
+						$activate = $this->activate_member( $phone, false, true );
+					}
+					$notif = get_option( 'mswa_deactivation_message' );
+				}
+				if ( !empty( $activate ) && '' <> $notif ) {
+					echo $this->formatted_notification( $notif, $activate );
+				} else {
+					echo __( 'Channel ID is invalid', 'ms-wabroadcast' );
+				}
+			} else {
+				if ( '' <> get_option( 'mswa_default_info_message' ) ) {
+					echo get_option( 'mswa_default_info_message' );
 				}
 			}
-		} else {
-			wp_send_json( array( 'code' => 400 ) );
 		}
 	}	
 
 	/**
 	 * Get member by phone
 	 */
-	public function get_member_id_by_phone( $phone ) {
-		$id = 0;
-		$q = new WP_Query( array(
+	public function get_member_id_by_phone( $phone, $get_all = false ) {
+		$id = array();
+		$args = array(
 			'post_type' 		=> 'ms_wa_member',
-			'posts_per_page' 	=> 1,
 			'meta_query' 		=> array(
 				array(
 					'key' 		=> '_mswa_member_phone',
@@ -704,11 +781,31 @@ class MS_WA_Broadcast {
 					'compare'	=> '='
 				)
 			)
-		) );
+		);
+		
+
+		if ( is_numeric( $get_all ) ) {
+			$args['posts_per_page'] = 1;
+			$args['meta_query']['relation'] = 'AND';
+			$args['meta_query'][] = array(
+				array(
+					'key' 		=> '_mswa_member_campaign_id',
+					'value'		=> $get_all,
+					'compare'	=> '='
+				)
+			);
+		} else if ( true === $get_all ) {
+			$args['posts_per_page'] = -1;
+		} else {
+			$args['posts_per_page'] = 1;
+		}
+
+		$q = new WP_Query( $args );
+
 		if ( $q->have_posts() ) {
 			while ( $q->have_posts() ) {
 				$q->the_post();
-				$id = get_the_ID();
+				$id[] = get_the_ID();
 			}
 		}; wp_reset_postdata();
 		return $id;
@@ -717,24 +814,29 @@ class MS_WA_Broadcast {
 	/**
 	 * Activate member
 	 */
-	public function activate_member( $phone, $activate = true ) {
+	public function activate_member( $phone, $activate = true, $all = false ) {
 		$data = array();
 		if ( !$this->is_phone_registered( $phone ) ) {
 			return false;
 		}
-		$id = $this->get_member_id_by_phone( $phone );
-		if ( $id !== 0 ) {
-			if ( $activate ) {
-				update_post_meta( $id, '_mswa_member_status', 'active' );	
-			} else {
-				update_post_meta( $id, '_mswa_member_status', 'inactive' );	
+		$ids = $this->get_member_id_by_phone( $phone, $all );
+		if ( !empty( $ids ) ) {
+			foreach( $ids as $id ) {
+				if ( $activate ) {
+					update_post_meta( $id, '_mswa_member_status', 'active' );	
+				} else {
+					update_post_meta( $id, '_mswa_member_status', 'inactive' );	
+				}
+				$data[] = array(
+					'id' 			=> $id,
+					'name' 			=> get_post_meta( $id, '_mswa_member_name', true ),
+					'phone' 		=> get_post_meta( $id, '_mswa_member_phone', true ),
+					'email' 		=> get_post_meta( $id, '_mswa_member_email', true ),
+					'status' 		=> get_post_meta( $id, '_mswa_member_status', true ),
+					'campaign_id' 	=> get_post_meta( $id, '_mswa_member_campaign_id', true )
+				);
 			}
-			$data['id'] = $id;
-			$data['name'] = get_post_meta( get_the_ID(), '_mswa_member_name', true );
-			$data['phone'] = get_post_meta( get_the_ID(), '_mswa_member_phone', true );
-			$data['email'] = get_post_meta( get_the_ID(), '_mswa_member_email', true );
-			$data['status'] = get_post_meta( get_the_ID(), '_mswa_member_status', true );
-			$data['campaign_id'] = get_post_meta( get_the_ID(), '_mswa_member_campaign_id', true );
+			return $data[0];
 		}
 		return $data;
 	}
