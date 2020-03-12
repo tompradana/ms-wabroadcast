@@ -6,7 +6,8 @@ class MS_WA_Broadcast {
 	private $settings = array( 
 		'mswa_token', 
 		'mswa_allow_samenumber', 
-		'mswa_wanotif', 
+		'mswa_wanotif',
+		'mswa_auto_activate_member', 
 		'mswa_wanotif_message',
 		'mswa_activation_message',
 		'mswa_deactivation_message'  
@@ -269,7 +270,7 @@ class MS_WA_Broadcast {
 
 				$args['body'] = array(
 					'type' 	=> 'text',
-					'text' 	=> $_REQUEST['message']
+					'text' 	=> $_REQUEST['message'] . "\r\n\r\n" . 'Untuk berhenti berlangganan balas dengan *STOP* atau *UNSUBSCRIBE*.'
 				);
 
 				if ( !empty( $numbers ) ) {
@@ -279,7 +280,7 @@ class MS_WA_Broadcast {
 				$response = wp_remote_post( $url, $args );
 				if ( !is_wp_error( $response ) ) {
 					$response = json_decode( wp_remote_retrieve_body( $response ) );
-					if ( $response->status === true ) {
+					if ( isset( $response->status ) && $response->status === true ) {
 						$ajaxresponse['code'] = 200;
 						$ajaxresponse['message'] = '✔️ Success';
 						$ajaxresponse['results'] = $response;
@@ -332,13 +333,14 @@ class MS_WA_Broadcast {
 
 			    				if ( !$this->is_phone_registered( $phone ) || ( 'on' == get_option( 'mswa_allow_samenumber' ) && $this->is_phone_registered( $phone ) ) ) {
 				    				// insert member
+				    				$autoactivate = 'on' == get_option( 'mswa_auto_activate_member' ) ? 'active' : 'inactive';
 				    				$member = wp_insert_post( array(
 				    					'post_type' 	=> 'ms_wa_member',
 				    					'post_title'	=> $name,
 				    					'post_status'	=> 'publish',
 				    					'meta_input'	=> array(
 				    						'_mswa_member_campaign_id' 	=> $_POST['campaign_id'],
-				    						'_mswa_member_status' 		=> 'inactive',
+				    						'_mswa_member_status' 		=> $autoactivate,
 				    						'_mswa_member_name' 		=> ucfirst( $name ),
 				    						'_mswa_member_phone' 		=> $phone,
 				    						'_mswa_member_email' 		=> $email
@@ -612,7 +614,7 @@ class MS_WA_Broadcast {
 			endwhile;
 		}
 		wp_reset_postdata();
-	  	return $numbers;
+	  	return array_unique( $numbers );
 	}
 
 	/**
@@ -638,6 +640,7 @@ class MS_WA_Broadcast {
 		}
 
 		if ( !empty( $phones ) ) {
+			$phones = array_unique( $phones );
 			$args['body']['phone'] = implode(',', $phones);
 		}
 
