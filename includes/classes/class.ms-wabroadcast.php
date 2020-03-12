@@ -304,7 +304,7 @@ class MS_WA_Broadcast {
 				};
 				$ajaxresponse['code'] = 200;
 				$ajaxresponse['message'] = '✔️ Settings saved';
-				$ajaxresponse['results'] = $response;
+				$ajaxresponse['results'] = $settings;
 				break;
 			case 'submit_campaign':
 				if ( !wp_verify_nonce( $_REQUEST['mswa_submit_campaign_nonce'], 'mswa_submit_campaign' ) ) {
