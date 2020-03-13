@@ -21,7 +21,7 @@
 
 				<div class="field">
 					<label><?php _e( 'Message:', 'ms-wabroadcast' ); ?></label>
-					<textarea required="true" id="message" name="message">Broadcast message 🤝.</textarea>
+					<textarea required="true" id="message" name="message"></textarea>
 				</div>
 
 				<div class="field">
