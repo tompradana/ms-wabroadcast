@@ -1,7 +1,8 @@
 <?php
 // class
 class MS_WA_Broadcast {
-	private $apiurl = 'https://fonnte.com/api/send_message.php';
+	// private $apiurl = 'https://fonnte.com/api/send_message.php';
+	private $apiurl = 'https://fonnte.com/api/api-undangan.php';
 
 	private $settings = array( 
 		'mswa_token', 
@@ -48,12 +49,29 @@ class MS_WA_Broadcast {
 
 		// webhook
 		add_action( 'rest_api_init', array( $this, 'ms_wabroadcast_rest_api' ) );
+
+		// plugins loaded
+		add_action( 'admin_notices', array( $this, 'ms_wabroadcast_notice' ) );
+	}
+
+	/** [ms_wabroadcast_notice description] */
+	public function ms_wabroadcast_notice() {
+		if ( !is_admin() ) return;
+		$class = 'notice notice-error';
+		$message = '';
+		if ( false === get_option( 'mswa_token' ) ) {
+		    $message = sprintf( __( 'Fonnte fresh install, please setup and add your Fonnte token <a href="%s">here</a>.', 'ms-wabroadcast' ), admin_url( 'admin.php?page=mswa-plugin-settings' ) );
+		} else if ( '' == get_option( 'mswa_token' ) ) {
+			$message = sprintf( __( 'Fonnte token missing, please add your Fonnte token <a href="%s">here</a>.', 'ms-wabroadcast' ), admin_url( 'admin.php?page=mswa-plugin-settings' ) );
+		}
+		if ( $message  ) 
+		    printf( '<div class="%1$s"><p>%2$s</p></div>', esc_attr( $class ), $message );
 	}
 
 	/**
 	 * Ajax hooks
 	 */
-	function ajax_hooks() {
+	public function ajax_hooks() {
 		add_action( 'wp_ajax_ms_wa_ajax', array( $this, 'ms_wabroadcast_ajax_request' ) );
 		add_action( 'wp_ajax_nopriv_ms_wa_ajax', array( $this, 'ms_wabroadcast_ajax_request' ) );
 	}
@@ -269,9 +287,13 @@ class MS_WA_Broadcast {
 					),
 				);
 
+				$message = $_REQUEST['message'];
+				$message = str_replace('{{nama}}', '{nama}', $message );
+				$message = str_replace('{{name}}', '{nama}', $message );
+
 				$args['body'] = array(
-					'type' 	=> 'text',
-					'text' 	=> $_REQUEST['message'] . "\r\n\r\n" . 'Untuk berhenti berlangganan balas dengan *STOP* atau *UNSUBSCRIBE*.'
+					'data' 	=> json_encode( $numbers ),
+					'text' 	=> $message . "\r\n\r\n" . 'Untuk berhenti berlangganan balas dengan *STOP* atau *UNSUBSCRIBE*.'
 				);
 
 				if ( !empty( $numbers ) ) {
@@ -369,7 +391,14 @@ class MS_WA_Broadcast {
 						    					$message = str_replace( '{{phone}}', $phone, $message );
 						    					$message = str_replace( '{{email}}', $email, $message );
 						    					$message = str_replace( '{{campaign_name}}', get_the_title($_POST['campaign_id']), $message );
-						    					$this->send_message( $phone, $message );
+
+						    					$phone = array( 
+						    						array(
+						    							'nama' 	=> $name,
+						    							'nomer'	=> $phone
+						    						)
+						    					);
+						    					$this->send_message( json_encode( $phone ), $message );
 						    				}
 
 					    					$ajaxresponse['code'] = 200;
@@ -640,7 +669,10 @@ class MS_WA_Broadcast {
 		if ( $q->have_posts() ) {
 			while ( $q->have_posts() ) : $q->the_post();
 				if ( '' <> get_post_meta( get_the_ID(), '_mswa_member_phone', true ) ) {
-					$numbers[] = get_post_meta( get_the_ID(), '_mswa_member_phone', true );
+					$numbers[] = array(
+						'nomer' => get_post_meta( get_the_ID(), '_mswa_member_phone', true ),
+						'nama'	=> get_post_meta( get_the_ID(), '_mswa_member_name', true )
+					);
 				}
 			endwhile;
 		}
@@ -662,7 +694,7 @@ class MS_WA_Broadcast {
 		);
 
 		$args['body'] = array(
-			'type' 	=> 'text',
+			'data' 	=> $phones,
 			'text' 	=> $text
 		);
 
