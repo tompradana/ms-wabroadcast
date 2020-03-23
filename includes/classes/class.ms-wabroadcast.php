@@ -296,10 +296,6 @@ class MS_WA_Broadcast {
 					'text' 	=> $message . "\r\n\r\n" . 'Untuk berhenti berlangganan balas dengan *STOP* atau *UNSUBSCRIBE*.'
 				);
 
-				if ( !empty( $numbers ) ) {
-					$args['body']['phone'] = implode(',', $numbers);
-				}
-				
 				$response = wp_remote_post( $url, $args );
 				if ( !is_wp_error( $response ) ) {
 					$response = json_decode( wp_remote_retrieve_body( $response ) );
@@ -398,7 +394,7 @@ class MS_WA_Broadcast {
 						    							'nomer'	=> $phone
 						    						)
 						    					);
-						    					$this->send_message( json_encode( $phone ), $message );
+						    					$this->send_message( $phone, $message );
 						    				}
 
 					    					$ajaxresponse['code'] = 200;
@@ -677,13 +673,32 @@ class MS_WA_Broadcast {
 			endwhile;
 		}
 		wp_reset_postdata();
-	  	return array_unique( $numbers );
+		
+	  	return $this->remove_duplicate_numbers( $numbers );
+	}
+
+	/**
+	 * [remove_duplicate_numbers description]
+	 * @param  array  $data [description]
+	 * @return [type]       [description]
+	 */
+	public function remove_duplicate_numbers( $numbers = array() ) {
+		$exist_number 	= array();
+		$unique_numbers = array();
+		foreach( $numbers as $data ) {
+			if ( !isset( $exist_number[$data['nomer']] ) ) {
+				$unique_numbers[] = $data;
+				$exist_number[$data['nomer']] = 1;
+			}
+		}
+
+		return $unique_numbers;
 	}
 
 	/**
 	 * Send message
 	 */
-	public function send_message( $phones = '', $text = '' ) {
+	public function send_message( $phones = array(), $text = '' ) {
 		$url 		= $this->apiurl;
 		$token 		= get_option( 'mswa_token' );
 
@@ -694,18 +709,9 @@ class MS_WA_Broadcast {
 		);
 
 		$args['body'] = array(
-			'data' 	=> $phones,
+			'data' 	=> json_encode( $phones ),
 			'text' 	=> $text
 		);
-
-		if ( $phones && !is_array( $phones ) ) {
-			$phones = (array) $phones;
-		}
-
-		if ( !empty( $phones ) ) {
-			$phones = array_unique( $phones );
-			$args['body']['phone'] = implode(',', $phones);
-		}
 
 		$response = wp_remote_post( $url, $args );
 		if ( !is_wp_error( $response ) ) {
