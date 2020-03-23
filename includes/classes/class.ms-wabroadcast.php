@@ -429,7 +429,7 @@ class MS_WA_Broadcast {
 			__( 'Campaign Form Template', 'ms-wabroadcast' ), 
 			array( $this, 'ms_wabroadcast_formbuilder_screen' ), 
 			'ms_wa_campaign', 
-			'advanced', 
+			'normal', 
 			'high' 
 		);
 
@@ -438,7 +438,7 @@ class MS_WA_Broadcast {
 			__( ' Member Detail', 'ms-wabroadcast' ), 
 			array( $this, 'ms_wabroadcast_membereditor_screen' ), 
 			'ms_wa_member', 
-			'advanced', 
+			'normal', 
 			'high' 
 		);
 	}
