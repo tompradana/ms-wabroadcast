@@ -3,7 +3,7 @@
     console.log('init');
 
     function MS_WA_Request(url, type, formdata, cbsuccess, cbfail) {
-    	var action = [{ name: "action", value: "ms_wa_ajax" }];
+    	var action = [{ name: "action", value: "fonnletter_ajax" }];
     	var data = $.merge(action,formdata);
         $.ajax({
             url: url,
@@ -18,9 +18,9 @@
         });
     }
 
-    function mswa_loading(el,a,msg,fail) {
+    function fonnletter_loading(el,a,msg,fail) {
     	if (a!==false) {
-    		el.find('[type="submit"]').attr('disabled', 'true').after('<img class="loading" src="'+mswa.spinner_url+'"/>');
+    		el.find('[type="submit"]').attr('disabled', 'true').after('<img class="loading" src="'+fonnletter.spinner_url+'"/>');
     	} else {
     		el.find('[type="submit"]').removeAttr('disabled').next('.loading').remove();
     		if ( msg != '' ) {
@@ -28,15 +28,15 @@
     			if ( fail ) {
     				cls = 'failtext';
     			}
-    			el.find('[type="submit"]').after('<div class="mswa-msg '+cls+'">'+msg+'</span>');
+    			el.find('[type="submit"]').after('<div class="fonnletter-msg '+cls+'">'+msg+'</span>');
     			setTimeout(function(){
-    				el.find('.mswa-msg.' + cls).fadeOut().remove();
+    				el.find('.fonnletter-msg.' + cls).fadeOut().remove();
     			},2000);
     		}
     	}
     }
 
-    $('form[name="ms-wa-campaign-form"]').on('submit', function(e) {
+    $('form[name="fonnletter-campaign-form"]').on('submit', function(e) {
         e.preventDefault();
 
         var $form = $(this);
@@ -44,19 +44,19 @@
         data.push({ name: "request", value: "submit_campaign" });
         data.push({ name: "campaign_id", value: $form.attr('data-campaign') });
 
-        mswa_loading($form);
+        fonnletter_loading($form);
 
         MS_WA_Request(
-            mswa.ajax_url,
+            fonnletter.ajax_url,
             'post',
             data,
             function(response) {
                 console.log(response);
-                mswa_loading($form,false,response.message);
+                fonnletter_loading($form,false,response.message);
             },
             function(fail) {
                 console.log(fail.message);
-                mswa_loading($form,false,fail.message,true);
+                fonnletter_loading($form,false,fail.message,true);
             }
         );
     });

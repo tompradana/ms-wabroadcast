@@ -2,8 +2,8 @@
     'use strict';
     console.log('init');
 
-    function MS_WA_Request(url, type, formdata, cbsuccess, cbfail) {
-    	var action = [{ name: "action", value: "ms_wa_ajax" }];
+    function FONNLETTER_Request(url, type, formdata, cbsuccess, cbfail) {
+    	var action = [{ name: "action", value: "fonnletter_ajax" }];
     	var data = $.merge(action,formdata);
         $.ajax({
             url: url,
@@ -18,9 +18,9 @@
         });
     }
 
-    function mswa_loading(el,a,msg,fail) {
+    function fonnletter_loading(el,a,msg,fail) {
     	if (a!==false) {
-    		el.find('input#submit').attr('disabled', 'true').after('<img class="loading" src="'+mswa.spinner_url+'"/>');
+    		el.find('input#submit').attr('disabled', 'true').after('<img class="loading" src="'+fonnletter.spinner_url+'"/>');
     	} else {
     		console.log('ini');
     		el.find('input#submit').removeAttr('disabled').next('.loading').remove();
@@ -31,7 +31,7 @@
     			}
     			el.find('input#submit').after('<span class="'+cls+'">'+msg+'</span>');
     			setTimeout(function(){
-    				$('.ms-wa .successtext,.ms-wa .failtext').fadeOut(function(){
+    				$('.fonnletter .successtext,.fonnletter .failtext').fadeOut(function(){
     					$(this).remove();
     				});
     			},3000);
@@ -53,19 +53,19 @@
         var data = $form.serializeArray();
         data.push({ name: "request", value: "send_message" });
 
-        mswa_loading($form);
+        fonnletter_loading($form);
 
-        MS_WA_Request(
-            mswa.ajax_url,
+        FONNLETTER_Request(
+            fonnletter.ajax_url,
             'post',
             data,
             function(response) {
                 console.log(response);
-                mswa_loading($form,false,response.message);
+                fonnletter_loading($form,false,response.message);
             },
             function(fail) {
                 console.log(fail.message);
-                mswa_loading($form,false,fail.message,true);
+                fonnletter_loading($form,false,fail.message,true);
             }
         );
     });
@@ -87,22 +87,22 @@
         	data.push({ name: "request", value: "save_settings" });
         }
 
-        mswa_loading($form);
+        fonnletter_loading($form);
 
-        MS_WA_Request(
-            mswa.ajax_url,
+        FONNLETTER_Request(
+            fonnletter.ajax_url,
             'post',
             data,
             function(response) {
                 console.log(response);
-                mswa_loading($form,false,response.message);
+                fonnletter_loading($form,false,response.message);
                 if ( reset ) {
                 	location.reload();
                 }
             },
             function(fail) {
                 console.log(fail.message);
-                mswa_loading($form,false,fail.message,true);
+                fonnletter_loading($form,false,fail.message,true);
             }
         );
     });

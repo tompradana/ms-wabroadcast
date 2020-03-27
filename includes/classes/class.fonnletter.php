@@ -1,18 +1,18 @@
 <?php
 // class
-class MS_WA_Broadcast {
+class FONNLETTER_Plugin {
 	// private $apiurl = 'https://fonnte.com/api/send_message.php';
 	private $apiurl = 'https://fonnte.com/api/api-undangan.php';
 
 	private $settings = array( 
-		'mswa_token', 
-		'mswa_allow_samenumber', 
-		'mswa_wanotif',
-		'mswa_auto_activate_member', 
-		'mswa_wanotif_message',
-		'mswa_activation_message',
-		'mswa_deactivation_message',
-		'mswa_default_info_message'
+		'fonnletter_token', 
+		'fonnletter_allow_samenumber', 
+		'fonnletter_wanotif',
+		'fonnletter_auto_activate_member', 
+		'fonnletter_wanotif_message',
+		'fonnletter_activation_message',
+		'fonnletter_deactivation_message',
+		'fonnletter_default_info_message'
 	);
 
 	/**
@@ -31,38 +31,71 @@ class MS_WA_Broadcast {
 		add_action( 'admin_menu', array( $this, 'admin_menu' ) );
 		add_action( 'init', array( $this, 'register_post_type' ) );
 
-		foreach( array( 'ms_wa_campaign', 'ms_wa_member' ) as $post_type ) {
+		foreach( array( 'fonnletter_campaign', 'fonnletter_member' ) as $post_type ) {
 			// manage columns
 			add_filter( "manage_{$post_type}_posts_columns", array( $this, "manage_{$post_type}_columns" ) );
 			// set values
 			add_action( "manage_{$post_type}_posts_custom_column", array( $this, "manage_{$post_type}_custom_columns" ), 10, 2 );
 		}
 
-		add_action( 'add_meta_boxes_ms_wa_campaign', array( $this, 'admin_metabox_scripts' ) );
-		add_action( 'add_meta_boxes_ms_wa_member', array( $this, 'admin_metabox_scripts' ) );
-		add_action( 'add_meta_boxes', array( $this, 'ms_wabroadcast_metabox' ) );
-		add_action( 'save_post', array( $this, 'ms_wabroadcast_metabox_save' ), 10, 2 );
+		add_action( 'add_meta_boxes_fonnletter_campaign', array( $this, 'admin_metabox_scripts' ) );
+		add_action( 'add_meta_boxes_fonnletter_member', array( $this, 'admin_metabox_scripts' ) );
+		add_action( 'add_meta_boxes', array( $this, 'fonnletter_broadcast_metabox' ) );
+		add_action( 'save_post', array( $this, 'fonnletter_broadcast_metabox_save' ), 10, 2 );
 
-		add_action( 'ms_wabroadcast_campaign_after_fields', array( $this, 'ms_wabroadcast_shortcode_submit_button' ), 10, 2 );
+		add_action( 'fonnletter_broadcast_campaign_after_fields', array( $this, 'fonnletter_broadcast_shortcode_submit_button' ), 10, 2 );
 
-		add_shortcode( 'ms_wa_campaign', array( $this, 'ms_wabroadcast_shortcode' ) );
+		add_shortcode( 'fonnletter_campaign', array( $this, 'fonnletter_broadcast_shortcode' ) );
 
 		// webhook
-		add_action( 'rest_api_init', array( $this, 'ms_wabroadcast_rest_api' ) );
+		add_action( 'rest_api_init', array( $this, 'fonnletter_broadcast_rest_api' ) );
 
-		// plugins loaded
-		add_action( 'admin_notices', array( $this, 'ms_wabroadcast_notice' ) );
+		// delete post
+		add_action( 'admin_notices', array( $this, 'fonnletter_broadcast_notice' ) );
+
+		// delete member
+		add_action( 'wp_trash_post', array( $this, 'delete_member' ) );
 	}
 
-	/** [ms_wabroadcast_notice description] */
-	public function ms_wabroadcast_notice() {
+	/**
+	 * [delete_member description]
+	 * @param  [type] $post_id [description]
+	 * @return [type]          [description]
+	 */
+	public function delete_member( $post_id ) {
+		$phone 	= get_post_meta( $post_id, '_fonnletter_member_phone', true );
+		$url 	= 'https://fonnte.com/api/del-kontak.php';
+		$token 	= get_option( 'fonnletter_token' );
+
+		if ( !empty( $phone ) ) {
+			$args = array(
+				'headers' => array(
+					'Authorization' => $token
+				),
+				'body' => array(
+					'nomer' => $phone
+				)
+			);
+
+			$response = wp_remote_post( $url, $args );
+			// if ( !is_wp_error( $response ) ) {
+			// 	$this->write_log( wp_remote_retrieve_body(  $response  ) );
+			// }
+		}
+	}
+
+	/**
+	 * [fonnletter_broadcast_notice description]
+	 * @return [type] [description]
+	 */
+	public function fonnletter_broadcast_notice() {
 		if ( !is_admin() ) return;
 		$class = 'notice notice-error';
 		$message = '';
-		if ( false === get_option( 'mswa_token' ) ) {
-		    $message = sprintf( __( 'Fonnte fresh install, please setup and add your Fonnte token <a href="%s">here</a>.', 'ms-wabroadcast' ), admin_url( 'admin.php?page=mswa-plugin-settings' ) );
-		} else if ( '' == get_option( 'mswa_token' ) ) {
-			$message = sprintf( __( 'Fonnte token missing, please add your Fonnte token <a href="%s">here</a>.', 'ms-wabroadcast' ), admin_url( 'admin.php?page=mswa-plugin-settings' ) );
+		if ( false === get_option( 'fonnletter_token' ) ) {
+		    $message = sprintf( __( 'Fonnte fresh install, please setup and add your Fonnte token <a href="%s">here</a>.', 'fonnletter' ), admin_url( 'admin.php?page=fonnletter-plugin-settings' ) );
+		} else if ( '' == get_option( 'fonnletter_token' ) ) {
+			$message = sprintf( __( 'Fonnte token missing, please add your Fonnte token <a href="%s">here</a>.', 'fonnletter' ), admin_url( 'admin.php?page=fonnletter-plugin-settings' ) );
 		}
 		if ( $message  ) 
 		    printf( '<div class="%1$s"><p>%2$s</p></div>', esc_attr( $class ), $message );
@@ -72,8 +105,8 @@ class MS_WA_Broadcast {
 	 * Ajax hooks
 	 */
 	public function ajax_hooks() {
-		add_action( 'wp_ajax_ms_wa_ajax', array( $this, 'ms_wabroadcast_ajax_request' ) );
-		add_action( 'wp_ajax_nopriv_ms_wa_ajax', array( $this, 'ms_wabroadcast_ajax_request' ) );
+		add_action( 'wp_ajax_fonnletter_ajax', array( $this, 'fonnletter_broadcast_ajax_request' ) );
+		add_action( 'wp_ajax_nopriv_fonnletter_ajax', array( $this, 'fonnletter_broadcast_ajax_request' ) );
 	}
 
 	/**
@@ -82,10 +115,10 @@ class MS_WA_Broadcast {
 	public function admin_menu() {
 		// menu
 		$hook_suffix = add_menu_page( 
-			__( 'MS Whatsapp Broadcast', 'ms-wabroadcast' ), 
-			__( 'MS Whatsapp Broadcast', 'ms-wabroadcast' ),
+			__( 'Fonnletter', 'fonnletter' ), 
+			__( 'Fonnletter', 'fonnletter' ),
 			'administrator', 
-			'ms-wabroadcast', 
+			'fonnletter', 
 			false,
 			$icon_url = '', 
 			81
@@ -93,21 +126,21 @@ class MS_WA_Broadcast {
 
 		// sub menu
 		$send = add_submenu_page( 
-			'ms-wabroadcast', 
-			__( 'Broadcast Message', 'ms-wabroadcast' ), 
-			__( 'Send Message', 'ms-wabroadcast' ), 
+			'fonnletter', 
+			__( 'Broadcast Message', 'fonnletter' ), 
+			__( 'Send Message', 'fonnletter' ), 
 			'administrator', 
-			'mswa-send-message', 
-			array( $this, 'ms_wabroadcast_message_screen' )
+			'fonnletter-send-message', 
+			array( $this, 'fonnletter_broadcast_message_screen' )
 		);
 
 		$settings = add_submenu_page( 
-			'ms-wabroadcast', 
-			__( 'MS WABroadcast Settings', 'ms-wabroadcast' ), 
-			__( 'Plugin Settings', 'ms-wabroadcast' ), 
+			'fonnletter', 
+			__( 'MS WABroadcast Settings', 'fonnletter' ), 
+			__( 'Plugin Settings', 'fonnletter' ), 
 			'administrator', 
-			'mswa-plugin-settings', 
-			array( $this, 'ms_wabroadcast_settings_screen' )
+			'fonnletter-plugin-settings', 
+			array( $this, 'fonnletter_broadcast_settings_screen' )
 		);
 
 		add_action( "load-{$send}", array( $this, 'admin_scripts') );
@@ -118,13 +151,13 @@ class MS_WA_Broadcast {
 	 * Admin scripts
 	 */
 	public function admin_scripts() {
-		wp_enqueue_style( 'emojionearea', plugins_url( '/assets/js/node_modules/emojionearea/dist/emojionearea.min.css', MS_WABRDOADCAST_DIR . '/ms-wabroadcast' ) );
-		wp_enqueue_style( 'admincss', plugins_url( '/assets/css/admin.css', MS_WABRDOADCAST_DIR . '/ms-wabroadcast' ) );
+		wp_enqueue_style( 'emojionearea', plugins_url( '/assets/js/node_modules/emojionearea/dist/emojionearea.min.css', FONNLETTER_DIR . '/fonnletter' ) );
+		wp_enqueue_style( 'admincss', plugins_url( '/assets/css/admin.css', FONNLETTER_DIR . '/fonnletter' ) );
 
-		wp_enqueue_script( 'emojionearea', plugins_url( '/assets/js/node_modules/emojionearea/dist/emojionearea.min.js', MS_WABRDOADCAST_DIR . '/ms-wabroadcast' ), array( 'jquery' ), MS_WABRDOADCAST_VERSION, true );
-		wp_enqueue_script( 'adminjs', plugins_url( '/assets/js/admin.js', MS_WABRDOADCAST_DIR . '/ms-wabroadcast' ), array( 'jquery' ), MS_WABRDOADCAST_VERSION, true );
+		wp_enqueue_script( 'emojionearea', plugins_url( '/assets/js/node_modules/emojionearea/dist/emojionearea.min.js', FONNLETTER_DIR . '/fonnletter' ), array( 'jquery' ), FONNLETTER_VERSION, true );
+		wp_enqueue_script( 'adminjs', plugins_url( '/assets/js/admin.js', FONNLETTER_DIR . '/fonnletter' ), array( 'jquery' ), FONNLETTER_VERSION, true );
 
-		wp_localize_script( 'adminjs', 'mswa', array(
+		wp_localize_script( 'adminjs', 'fonnletter', array(
 			'ajax_url' => admin_url( 'admin-ajax.php' ),
 			'spinner_url' => admin_url( 'images/spinner.gif' )
 		) );
@@ -134,15 +167,15 @@ class MS_WA_Broadcast {
 	 * Admin scripts
 	 */
 	public function admin_metabox_scripts() {
-		wp_enqueue_style( 'admincss', plugins_url( '/assets/css/admin-editor.css', MS_WABRDOADCAST_DIR . '/ms-wabroadcast' ) );
+		wp_enqueue_style( 'admincss', plugins_url( '/assets/css/admin-editor.css', FONNLETTER_DIR . '/fonnletter' ) );
 
-		// wp_enqueue_script( 'formrender', plugins_url( '/assets/js/node_modules/formBuilder/dist/form-render.min.js', MS_WABRDOADCAST_DIR . '/ms-wabroadcast' ), array( 'jquery' ), MS_WABRDOADCAST_VERSION, true );
-		// wp_enqueue_script( 'formbuilder', plugins_url( '/assets/js/node_modules/formBuilder/dist/form-builder.min.js', MS_WABRDOADCAST_DIR . '/ms-wabroadcast' ), array( 'jquery', 'jquery-ui-sortable', 'formrender' ), MS_WABRDOADCAST_VERSION, true );
+		// wp_enqueue_script( 'formrender', plugins_url( '/assets/js/node_modules/formBuilder/dist/form-render.min.js', FONNLETTER_DIR . '/fonnletter' ), array( 'jquery' ), FONNLETTER_VERSION, true );
+		// wp_enqueue_script( 'formbuilder', plugins_url( '/assets/js/node_modules/formBuilder/dist/form-builder.min.js', FONNLETTER_DIR . '/fonnletter' ), array( 'jquery', 'jquery-ui-sortable', 'formrender' ), FONNLETTER_VERSION, true );
 		
-		wp_enqueue_script( 'adminjs', plugins_url( '/assets/js/admin-editor.js', MS_WABRDOADCAST_DIR . '/ms-wabroadcast' ), array( 'jquery' ), MS_WABRDOADCAST_VERSION, true );
+		wp_enqueue_script( 'adminjs', plugins_url( '/assets/js/admin-editor.js', FONNLETTER_DIR . '/fonnletter' ), array( 'jquery' ), FONNLETTER_VERSION, true );
 
-		// wp_localize_script( 'adminjs', 'mswa', array(
-		// 	'formdata' => (isset($_GET['post']) &&!empty($_GET['post'])?get_post_meta( $_GET['post'], '_ms_wabroadcast_form_data',true):''),
+		// wp_localize_script( 'adminjs', 'fonnletter', array(
+		// 	'formdata' => (isset($_GET['post']) &&!empty($_GET['post'])?get_post_meta( $_GET['post'], '_fonnletter_broadcast_form_data',true):''),
 		// ) );
 	}
 
@@ -155,69 +188,69 @@ class MS_WA_Broadcast {
 		 */
 		$args = array(
 			'labels' 		=> array(
-				'name'			=> __( 'Campaigns', 'ms-wabroadcast' ),
-				'singular_name' => __( 'Campaign', 'ms-wabroadcast' ),
-				'add_new'		=> __( 'Add new campaign', 'ms-wabroadcast' ),
-				'search_items'	=> __( 'Search campaigns', 'ms-wabroadcast' ),
-				'not_found'		=> __( 'No campaigns found', 'ms-wabroadcast' )
+				'name'			=> __( 'Campaigns', 'fonnletter' ),
+				'singular_name' => __( 'Campaign', 'fonnletter' ),
+				'add_new'		=> __( 'Add new campaign', 'fonnletter' ),
+				'search_items'	=> __( 'Search campaigns', 'fonnletter' ),
+				'not_found'		=> __( 'No campaigns found', 'fonnletter' )
 			),
-			'description' 	=> __( 'Campaign post type', 'ms-wabroadcast' ),
+			'description' 	=> __( 'Campaign post type', 'fonnletter' ),
 			'public' 		=> false,
 			'show_ui' 		=> true,
-			'show_in_menu' 	=> 'ms-wabroadcast',
+			'show_in_menu' 	=> 'fonnletter',
 			'show_in_rest'	=> true,
-			'menu_position'	=> 'ms-wabroadcast',
+			'menu_position'	=> 'fonnletter',
 			'supports'		=> array( 'title' )
 		);
-		register_post_type( 'ms_wa_campaign', $args );
+		register_post_type( 'fonnletter_campaign', $args );
 
 		/**
 		 * Users
 		 */
 		$args['labels']			= array(
-			'name'			=> __( 'Members', 'ms-wabroadcast' ),
-			'singular_name' => __( 'Member', 'ms-wabroadcast' ),
-			'add_new'		=> __( 'Add new member', 'ms-wabroadcast' ),
-			'search_items'	=> __( 'Search members', 'ms-wabroadcast' ),
-			'not_found'		=> __( 'No members found', 'ms-wabroadcast' )
+			'name'			=> __( 'Members', 'fonnletter' ),
+			'singular_name' => __( 'Member', 'fonnletter' ),
+			'add_new'		=> __( 'Add new member', 'fonnletter' ),
+			'search_items'	=> __( 'Search members', 'fonnletter' ),
+			'not_found'		=> __( 'No members found', 'fonnletter' )
 		);
-		$args['description'] 	= __( 'Member post type', 'ms-wabroadcast' );
-		register_post_type( 'ms_wa_member', $args );
+		$args['description'] 	= __( 'Member post type', 'fonnletter' );
+		register_post_type( 'fonnletter_member', $args );
 	}
 
 	/**
 	 * Manage admin columns
 	 */
-	function manage_ms_wa_campaign_columns( $columns ) {
+	public function manage_fonnletter_campaign_columns( $columns ) {
 		unset( $columns['date'] );
-		$columns['shortcode'] 		= __( 'Shortcode', 'ms-wabroadcast' );
-		$columns['member_today'] 	= __( 'Today Registered', 'ms-wabroadcast' );
-		$columns['member'] 			= __( 'Total Members', 'ms-wabroadcast' );
-		$columns['date']			= __( 'Date', 'ms-wabroadcast' );
+		$columns['shortcode'] 		= __( 'Shortcode', 'fonnletter' );
+		$columns['member_today'] 	= __( 'Today Registered', 'fonnletter' );
+		$columns['member'] 			= __( 'Total Members', 'fonnletter' );
+		$columns['date']			= __( 'Date', 'fonnletter' );
 		return $columns;
 	}
 
 	/**
 	 * Manage admin columns
 	 */
-	function manage_ms_wa_member_columns( $columns ) {
+	public function manage_fonnletter_member_columns( $columns ) {
 		unset( $columns['date'] );
-		$columns['title']		= __( 'Name', 'ms-wabroadcast' );
-		$columns['campaign'] 	= __( 'Campaign', 'ms-wabroadcast' );
-		$columns['phone'] 		= __( 'Phone/Whatsapp', 'ms-wabroadcast' );
-		$columns['email'] 		= __( 'Email Address', 'ms-wabroadcast' );
-		$columns['status'] 	= __( 'Status', 'ms-wabroadcast' );
-		$columns['date']		= __( 'Date Registered', 'ms-wabroadcast' );
+		$columns['title']		= __( 'Name', 'fonnletter' );
+		$columns['campaign'] 	= __( 'Campaign', 'fonnletter' );
+		$columns['phone'] 		= __( 'Phone/Whatsapp', 'fonnletter' );
+		$columns['email'] 		= __( 'Email Address', 'fonnletter' );
+		$columns['status'] 	= __( 'Status', 'fonnletter' );
+		$columns['date']		= __( 'Date Registered', 'fonnletter' );
 		return $columns;
 	}
 
 	/**
 	 * Set values admin column
 	 */
-	function manage_ms_wa_campaign_custom_columns( $column, $post_id ) {
+	public function manage_fonnletter_campaign_custom_columns( $column, $post_id ) {
 		switch ( $column ) {
 			case 'shortcode':
-				echo '<input type="text" onClick="this.setSelectionRange(0, this.value.length)" value="[ms_wa_campaign id='.$post_id.']">';
+				echo '<input type="text" onClick="this.setSelectionRange(0, this.value.length)" value="[fonnletter_campaign id='.$post_id.']">';
 				break;
 			case 'member':
 				echo $this->get_total_members( $post_id );
@@ -231,10 +264,10 @@ class MS_WA_Broadcast {
 	/**
 	 * Set values admin column
 	 */
-	function manage_ms_wa_member_custom_columns( $column, $post_id ) {
+	public function manage_fonnletter_member_custom_columns( $column, $post_id ) {
 		switch ( $column ) {
 			case 'campaign':
-				$campaign_id = get_post_meta( $post_id, $key = '_mswa_member_campaign_id', true );
+				$campaign_id = get_post_meta( $post_id, $key = '_fonnletter_member_campaign_id', true );
 				if ( $campaign_id ) {
 					printf( '%s [%s]', get_the_title( $campaign_id ), $campaign_id );
 				} else {
@@ -242,25 +275,25 @@ class MS_WA_Broadcast {
 				}
 				break;
 			case 'phone':
-				$phone = get_post_meta( $post_id, $key = '_mswa_member_phone', true );
+				$phone = get_post_meta( $post_id, $key = '_fonnletter_member_phone', true );
 				if ( $phone ) 
 					echo $phone;
 				else 
 					echo '-';
 				break;
 			case 'email':
-				$email = get_post_meta( $post_id, $key = '_mswa_member_email', true );
+				$email = get_post_meta( $post_id, $key = '_fonnletter_member_email', true );
 				if ( $email ) 
 					echo $email;
 				else 
 					echo '-';
 				break;
 			case 'status':
-				$phone = get_post_meta( $post_id, $key = '_mswa_member_status', true );
+				$phone = get_post_meta( $post_id, $key = '_fonnletter_member_status', true );
 				if ( $phone == 'inactive' || false == $phone ) 
-					echo __( "Not active", 'ms-wabroadcast' ) . '<span style="display:inline-block; width:10px;height:10px;border-radius:500px;background-color:red;margin-left:10px"></span>';
+					echo __( "Not active", 'fonnletter' ) . '<span style="display:inline-block; width:10px;height:10px;border-radius:500px;background-color:red;margin-left:10px"></span>';
 				else 
-					echo __( "Active", 'ms-wabroadcast' ) . '<span style="display:inline-block; width:10px;height:10px;border-radius:500px;background-color:green;margin-left:10px"></span>';
+					echo __( "Active", 'fonnletter' ) . '<span style="display:inline-block; width:10px;height:10px;border-radius:500px;background-color:green;margin-left:10px"></span>';
 				break;
 			case 'date':
 				echo get_the_date( 'c', $post_id );
@@ -271,14 +304,14 @@ class MS_WA_Broadcast {
 	/**
 	 * Ajax send
 	 */
-	function ms_wabroadcast_ajax_request() {
+	public function fonnletter_broadcast_ajax_request() {
 		$ajaxresponse 	= array( 'code' => 400, 'message' => '❌ Error', 'results' => '' );
 		$action 		= $_REQUEST['request'];
 
 		switch ( $action ) {
 			case 'send_message':
 				$url 		= $this->apiurl;
-				$token 		= get_option( 'mswa_token' );
+				$token 		= get_option( 'fonnletter_token' );
 				$numbers 	= $this->get_phone_numbers( $_POST['campaign'], 'active' );
 			
 				$args 		= array(
@@ -335,19 +368,19 @@ class MS_WA_Broadcast {
 				$ajaxresponse['results'] = $settings;
 				break;
 			case 'submit_campaign':
-				if ( !wp_verify_nonce( $_REQUEST['mswa_submit_campaign_nonce'], 'mswa_submit_campaign' ) ) {
+				if ( !wp_verify_nonce( $_REQUEST['fonnletter_submit_campaign_nonce'], 'fonnletter_submit_campaign' ) ) {
 					$ajaxresponse['message'] = 'Cheat\'in uh! :(';
 			    } else {
-			    	$phone 	= isset( $_POST['_mswa_input_phone'] ) && !empty( $_POST['_mswa_input_phone'] ) ? $_POST['_mswa_input_phone'] : false;
+			    	$phone 	= isset( $_POST['_fonnletter_input_phone'] ) && !empty( $_POST['_fonnletter_input_phone'] ) ? $_POST['_fonnletter_input_phone'] : false;
 
 			    	// error if phone not present
 			    	if ( false === $phone ) {
 			    		$ajaxresponse['message'] = 'WhatsApp number is required!';
 			    	} else {
 			    		// name
-			    		$name 	= isset( $_POST['_mswa_input_name'] ) && !empty( $_POST['_mswa_input_name'] ) ? $_POST['_mswa_input_name'] : '';
+			    		$name 	= isset( $_POST['_fonnletter_input_name'] ) && !empty( $_POST['_fonnletter_input_name'] ) ? $_POST['_fonnletter_input_name'] : '';
 			    		// email
-			    		$email 	= isset( $_POST['_mswa_input_email'] ) && !empty( $_POST['_mswa_input_email'] ) ? $_POST['_mswa_input_email'] : '';
+			    		$email 	= isset( $_POST['_fonnletter_input_email'] ) && !empty( $_POST['_fonnletter_input_email'] ) ? $_POST['_fonnletter_input_email'] : '';
 
 			    		if ( $email && !is_email( $email ) ) {
 			    			// invalid email
@@ -359,29 +392,29 @@ class MS_WA_Broadcast {
 			    				$ajaxresponse['message'] = 'Phone number must be country code + phone number!';
 			    			} else {
 
-			    				if ( !$this->is_phone_registered( $phone, $_POST['campaign_id'] ) || ( 'on' == get_option( 'mswa_allow_samenumber' ) && $this->is_phone_registered( $phone ) ) ) {
+			    				if ( !$this->is_phone_registered( $phone, $_POST['campaign_id'] ) || ( 'on' == get_option( 'fonnletter_allow_samenumber' ) && $this->is_phone_registered( $phone ) ) ) {
 
 			    					if ( ! $this->is_phone_registered( $phone, $_POST['campaign_id'] ) ) {
 					    				// insert member
-					    				$autoactivate = 'on' == get_option( 'mswa_auto_activate_member' ) ? 'active' : 'inactive';
+					    				$autoactivate = 'on' == get_option( 'fonnletter_auto_activate_member' ) ? 'active' : 'inactive';
 					    				$member = wp_insert_post( array(
-					    					'post_type' 	=> 'ms_wa_member',
+					    					'post_type' 	=> 'fonnletter_member',
 					    					'post_title'	=> $name,
 					    					'post_status'	=> 'publish',
 					    					'meta_input'	=> array(
-					    						'_mswa_member_campaign_id' 	=> $_POST['campaign_id'],
-					    						'_mswa_member_status' 		=> $autoactivate,
-					    						'_mswa_member_name' 		=> ucfirst( $name ),
-					    						'_mswa_member_phone' 		=> $phone,
-					    						'_mswa_member_email' 		=> $email
+					    						'_fonnletter_member_campaign_id' 	=> $_POST['campaign_id'],
+					    						'_fonnletter_member_status' 		=> $autoactivate,
+					    						'_fonnletter_member_name' 		=> ucfirst( $name ),
+					    						'_fonnletter_member_phone' 		=> $phone,
+					    						'_fonnletter_member_email' 		=> $email
 					    					)
 					    				), true );
 
 					    				// ok
 					    				if ( !is_wp_error( $member ) ) {
 					    					// send
-						    				if ( 'on' ==  get_option( 'mswa_wanotif' ) && '' != get_option( 'mswa_wanotif_message' ) ) {
-						    					$message = get_option( 'mswa_wanotif_message' );
+						    				if ( 'on' ==  get_option( 'fonnletter_wanotif' ) && '' != get_option( 'fonnletter_wanotif_message' ) ) {
+						    					$message = get_option( 'fonnletter_wanotif_message' );
 						    					// {{name}} {{phone}} {{email}} {{campaign_name}}
 						    					$message = str_replace( '{{name}}', $name, $message );
 						    					$message = str_replace( '{{phone}}', $phone, $message );
@@ -423,21 +456,21 @@ class MS_WA_Broadcast {
 	/**
 	 * Metabox
 	 */
-	public function ms_wabroadcast_metabox() {
+	public function fonnletter_broadcast_metabox() {
 		add_meta_box( 
 			'formbuilder', 
-			__( 'Campaign Form Template', 'ms-wabroadcast' ), 
-			array( $this, 'ms_wabroadcast_formbuilder_screen' ), 
-			'ms_wa_campaign', 
+			__( 'Campaign Form Template', 'fonnletter' ), 
+			array( $this, 'fonnletter_broadcast_formbuilder_screen' ), 
+			'fonnletter_campaign', 
 			'normal', 
 			'high' 
 		);
 
 		add_meta_box( 
 			'membereditor', 
-			__( ' Member Detail', 'ms-wabroadcast' ), 
-			array( $this, 'ms_wabroadcast_membereditor_screen' ), 
-			'ms_wa_member', 
+			__( ' Member Detail', 'fonnletter' ), 
+			array( $this, 'fonnletter_broadcast_membereditor_screen' ), 
+			'fonnletter_member', 
 			'normal', 
 			'high' 
 		);
@@ -446,10 +479,10 @@ class MS_WA_Broadcast {
 	/**
 	 * Save metabox
 	 */
-	public function ms_wabroadcast_metabox_save( $post_id, $post ) {
-		if ( 'ms_wa_campaign' == $post->post_type ) {
+	public function fonnletter_broadcast_metabox_save( $post_id, $post ) {
+		if ( 'fonnletter_campaign' == $post->post_type ) {
 	        foreach ($_POST as $key => $value) {
-		    	if ( false !== strpos( $key, '_mswa' ) ) {
+		    	if ( false !== strpos( $key, '_fonn' ) ) {
 			        update_post_meta(
 			            $post_id,
 			            $key,
@@ -457,9 +490,9 @@ class MS_WA_Broadcast {
 			        );
 			    }
 		    }
-	    } else if ( 'ms_wa_member' == $post->post_type ) {
+	    } else if ( 'fonnletter_member' == $post->post_type ) {
 	    	foreach ($_POST as $key => $value) {
-		    	if ( false !== strpos( $key, '_mswa' ) ) {
+		    	if ( false !== strpos( $key, '_fonn' ) ) {
 			        update_post_meta(
 			            $post_id,
 			            $key,
@@ -467,75 +500,75 @@ class MS_WA_Broadcast {
 			        );
 			    }
 		    }
-		    update_post_meta( $post_id, '_mswa_member_name', $post->post_title );
+		    update_post_meta( $post_id, '_fonnletter_member_name', $post->post_title );
 	    }
 	}
 
 	/**
 	 * HTML Screens
 	 */
-	public function ms_wabroadcast_message_screen() {
-		include( MS_WABRDOADCAST_DIR . 'views/admin/pages/broadcast-message.php' );
+	public function fonnletter_broadcast_message_screen() {
+		include( FONNLETTER_DIR . 'views/admin/pages/broadcast-message.php' );
 	}
 
 	/**
 	 * HTML Screens
 	 */
-	public function ms_wabroadcast_settings_screen() {
-		include( MS_WABRDOADCAST_DIR . 'views/admin/pages/plugin-settings.php' );
+	public function fonnletter_broadcast_settings_screen() {
+		include( FONNLETTER_DIR . 'views/admin/pages/plugin-settings.php' );
 	}
 
 	/**
 	 * HTML Screens
 	 */
-	public function ms_wabroadcast_formbuilder_screen( $post ) {
-		$template = get_post_meta( $post->ID, '_mswa_template', true );
-		$template_html = get_post_meta( $post->ID, '_mswa_template_custom', true );
-		$form_title = get_post_meta( $post->ID, '_mswa_form_title', true );
-		$buttontext = '' <> get_post_meta( $post->ID, '_mswa_submit_buttontext', true ) ? get_post_meta( $post->ID, '_mswa_submit_buttontext', true ) : __( 'Subscribe', 'ms-wabroadcast' );
-		include( MS_WABRDOADCAST_DIR . 'views/admin/metaboxes/form-builder.php' );
+	public function fonnletter_broadcast_formbuilder_screen( $post ) {
+		$template = get_post_meta( $post->ID, '_fonnletter_template', true );
+		$template_html = get_post_meta( $post->ID, '_fonnletter_template_custom', true );
+		$form_title = get_post_meta( $post->ID, '_fonnletter_form_title', true );
+		$buttontext = '' <> get_post_meta( $post->ID, '_fonnletter_submit_buttontext', true ) ? get_post_meta( $post->ID, '_fonnletter_submit_buttontext', true ) : __( 'Subscribe', 'fonnletter' );
+		include( FONNLETTER_DIR . 'views/admin/metaboxes/form-builder.php' );
 	}
 
 	/**
 	 * HTML Screens
 	 */
-	public function ms_wabroadcast_membereditor_screen( $post ) {
-		include( MS_WABRDOADCAST_DIR . 'views/admin/metaboxes/member-editor.php' );
+	public function fonnletter_broadcast_membereditor_screen( $post ) {
+		include( FONNLETTER_DIR . 'views/admin/metaboxes/member-editor.php' );
 	}
 
 	/**
 	 * Submit button
 	 */
-	public function ms_wabroadcast_shortcode_submit_button( $id, $template ) {
-		$buttontext = get_post_meta( $id, '_mswa_submit_buttontext', true );
-		include( MS_WABRDOADCAST_DIR . 'views/front/submit-button.php' );
+	public function fonnletter_broadcast_shortcode_submit_button( $id, $template ) {
+		$buttontext = get_post_meta( $id, '_fonnletter_submit_buttontext', true );
+		include( FONNLETTER_DIR . 'views/front/submit-button.php' );
 	}
 
 	/**
 	 * Shortcode
 	 */
-	public function ms_wabroadcast_shortcode( $atts ) {
+	public function fonnletter_broadcast_shortcode( $atts ) {
 		$atts = shortcode_atts( array(
 	        'id' 	=> '',
-    	), $atts, 'ms_wa_campaign' );
+    	), $atts, 'fonnletter_campaign' );
     	
     	extract( $atts );
 
-    	if ( '' == $id || ( $id != '' && get_post_type( $id ) !== 'ms_wa_campaign' ) ) {
-    		return __( 'Invalid campaign ID', 'ms-wabroadcast' );
+    	if ( '' == $id || ( $id != '' && get_post_type( $id ) !== 'fonnletter_campaign' ) ) {
+    		return __( 'Invalid campaign ID', 'fonnletter' );
     	} else {
-    		$template = get_post_meta( $id, '_mswa_template', true );
-			$template_html = get_post_meta( $id, '_mswa_template_custom', true );
-			$form_title = get_post_meta( $id, '_mswa_form_title', true );
+    		$template = get_post_meta( $id, '_fonnletter_template', true );
+			$template_html = get_post_meta( $id, '_fonnletter_template_custom', true );
+			$form_title = get_post_meta( $id, '_fonnletter_form_title', true );
 			ob_start();
-			include( MS_WABRDOADCAST_DIR . 'views/front/campaign-shortcode.php' );
+			include( FONNLETTER_DIR . 'views/front/campaign-shortcode.php' );
 			if ( $template == 'default' ) {
-				wp_enqueue_style( 'mswa-campaigncss', plugins_url( '/assets/css/front.css', MS_WABRDOADCAST_DIR . '/ms-wabroadcast' ) );
+				wp_enqueue_style( 'fonnletter-campaigncss', plugins_url( '/assets/css/front.css', FONNLETTER_DIR . '/fonnletter' ) );
 			}
-			wp_enqueue_script( 'mswa-campaignjs', plugins_url( '/assets/js/front.js', MS_WABRDOADCAST_DIR . '/ms-wabroadcast' ), array( 'jquery' ), MS_WABRDOADCAST_VERSION, true );
-			wp_localize_script( 'mswa-campaignjs', 'mswa', array(
+			wp_enqueue_script( 'fonnletter-campaignjs', plugins_url( '/assets/js/front.js', FONNLETTER_DIR . '/fonnletter' ), array( 'jquery' ), FONNLETTER_VERSION, true );
+			wp_localize_script( 'fonnletter-campaignjs', 'fonnletter', array(
 				'ajax_url' 		=> admin_url( 'admin-ajax.php' ),
-				'spinner_url' 	=> plugins_url( '/assets/images/loader.svg', MS_WABRDOADCAST_DIR . '/ms-wabroadcast' )
+				'spinner_url' 	=> plugins_url( '/assets/images/loader.svg', FONNLETTER_DIR . '/fonnletter' )
 			) );
 			return ob_get_clean();
 		}
@@ -565,11 +598,11 @@ class MS_WA_Broadcast {
 	 */
 	public function is_phone_registered( $phone, $campaign_id = null ) {
 		$args = array(
-			'post_type' 		=> 'ms_wa_member',
+			'post_type' 		=> 'fonnletter_member',
 			'posts_per_page' 	=> -1,
 			'meta_query' 		=> array(
 				array(
-					'key' 		=> '_mswa_member_phone',
+					'key' 		=> '_fonnletter_member_phone',
 					'value'		=> $phone,
 					'compare'	=> '='
 				)
@@ -580,7 +613,7 @@ class MS_WA_Broadcast {
 			$args['posts_per_page'] = 1;
 			$args['meta_query']['relation'] = 'AND';
 			$args['meta_query'][] = array(
-				'key' 		=> '_mswa_member_campaign_id',
+				'key' 		=> '_fonnletter_member_campaign_id',
 				'value'		=> $campaign_id,
 				'compare'	=> '='
 			);
@@ -602,13 +635,13 @@ class MS_WA_Broadcast {
 	 */
 	public function get_total_members( $campaign_id = null, $today = false ) {
 		$args = array(
-			'post_type' 		=> 'ms_wa_member',
+			'post_type' 		=> 'fonnletter_member',
 			'posts_per_page' 	=> -1,
 		);
 		if ( $campaign_id != null ) {
 			$args['meta_query'] = array(
 				array(
-					'key' 		=> '_mswa_member_campaign_id',
+					'key' 		=> '_fonnletter_member_campaign_id',
 					'value'		=> $campaign_id,
 					'compare'	=> '='
 				)
@@ -639,14 +672,14 @@ class MS_WA_Broadcast {
 	public function get_phone_numbers( $campaign_id = null, $status = '' ) {
 		$numbers = array();
 		$args = array(
-			'post_type' 		=> 'ms_wa_member',
+			'post_type' 		=> 'fonnletter_member',
 			'posts_per_page' 	=> -1,
 		);
 
 		if ( in_array( $status, array( 'active', 'inactive' ) ) ) {
 			$args['meta_query']['relation'] = 'AND';
 			$args['meta_query'][] = array(
-				'key' 		=> '_mswa_member_status',
+				'key' 		=> '_fonnletter_member_status',
 				'value'		=> $status,
 				'compare'	=> '='
 			);
@@ -654,7 +687,7 @@ class MS_WA_Broadcast {
 
 		if ( $campaign_id != null && $campaign_id != 'all' ) {
 			$args['meta_query'][] = array(
-				'key' 		=> '_mswa_member_campaign_id',
+				'key' 		=> '_fonnletter_member_campaign_id',
 				'value'		=> $campaign_id,
 				'compare'	=> '='
 			);
@@ -664,16 +697,16 @@ class MS_WA_Broadcast {
 
 		if ( $q->have_posts() ) {
 			while ( $q->have_posts() ) : $q->the_post();
-				if ( '' <> get_post_meta( get_the_ID(), '_mswa_member_phone', true ) ) {
+				if ( '' <> get_post_meta( get_the_ID(), '_fonnletter_member_phone', true ) ) {
 					$numbers[] = array(
-						'nomer' => get_post_meta( get_the_ID(), '_mswa_member_phone', true ),
-						'nama'	=> get_post_meta( get_the_ID(), '_mswa_member_name', true )
+						'nomer' => get_post_meta( get_the_ID(), '_fonnletter_member_phone', true ),
+						'nama'	=> get_post_meta( get_the_ID(), '_fonnletter_member_name', true )
 					);
 				}
 			endwhile;
 		}
 		wp_reset_postdata();
-		
+
 	  	return $this->remove_duplicate_numbers( $numbers );
 	}
 
@@ -691,7 +724,6 @@ class MS_WA_Broadcast {
 				$exist_number[$data['nomer']] = 1;
 			}
 		}
-
 		return $unique_numbers;
 	}
 
@@ -700,7 +732,7 @@ class MS_WA_Broadcast {
 	 */
 	public function send_message( $phones = array(), $text = '' ) {
 		$url 		= $this->apiurl;
-		$token 		= get_option( 'mswa_token' );
+		$token 		= get_option( 'fonnletter_token' );
 
 		$args 		= array(
 			'headers' => array(
@@ -729,20 +761,20 @@ class MS_WA_Broadcast {
 	/**
 	 * Rest api
 	 */
-	public function ms_wabroadcast_rest_api() {
-		register_rest_route( 'mswabroadcast/v1', '/webhook', array(
+	public function fonnletter_broadcast_rest_api() {
+		register_rest_route( 'fonnletter/v1', '/webhook', array(
 			'methods' => 'POST',
-			'callback' => array( $this, 'ms_wabroadcast_rest_api_handler' )
+			'callback' => array( $this, 'fonnletter_broadcast_rest_api_handler' )
 		) );
 	}
 
-	public function ms_wabroadcast_rest_api_handler() {
+	public function fonnletter_broadcast_rest_api_handler() {
 		header( 'Access-Control-Allow-Headers: Content-Type');
         header( 'Content-Type: text/html; charset=UTF-8');
 		extract( $_POST );
 
 		if ( !$this->is_phone_registered( $phone ) ) {
-			echo __( 'Nomor Anda belum terdaftar', 'ms-wabroadcast' );
+			echo __( 'Nomor Anda belum terdaftar', 'fonnletter' );
 		} else {
 			$message = trim( strtolower( $message ) );
 			$message = preg_replace( '/\s+/', '', $message );
@@ -751,12 +783,12 @@ class MS_WA_Broadcast {
 			if ( 'info' === $message ) {
 				$c = array();
 				$q = new WP_Query( array(
-					'post_type' => 'ms_wa_member',
+					'post_type' => 'fonnletter_member',
 					'post_per_page' => -1,
 					'meta_query' => array(
 						'relation' => 'AND',
 						array(
-							'key' => '_mswa_member_phone',
+							'key' => '_fonnletter_member_phone',
 							'value' => $phone
 						),
 					)
@@ -764,13 +796,13 @@ class MS_WA_Broadcast {
 				if ( $q->have_posts() ) {
 					$i=1;while ( $q->have_posts() ) {
 						$q->the_post();
-						$id = get_post_meta( get_the_ID(), '_mswa_member_campaign_id', true );
-						$status = get_post_meta( get_the_ID(), '_mswa_member_status', true );
+						$id = get_post_meta( get_the_ID(), '_fonnletter_member_campaign_id', true );
+						$status = get_post_meta( get_the_ID(), '_fonnletter_member_status', true );
 						echo sprintf( '%s. [%s] %s, status: %s', $i++, $id, get_the_title(), $status ) . "\r\n";
 					}
 					wp_reset_postdata();
 				} else {
-					echo __( 'Channels not found', 'ms-wabroadcast' );
+					echo __( 'Channels not found', 'fonnletter' );
 				}
 			} else if ( !empty( $matches ) ) {
 				$message = $matches[1];
@@ -783,23 +815,23 @@ class MS_WA_Broadcast {
 					} else {
 						$activate = $this->activate_member( $phone, true, true );
 					}
-					$notif = get_option( 'mswa_activation_message' );
+					$notif = get_option( 'fonnletter_activation_message' );
 				} else if ( in_array( $message, array( 'stop', 'unsubscribe' ) ) ) {
 					if ( $campaign_id !== false ) {
 						$activate = $this->activate_member( $phone, false, $campaign_id );
 					} else {
 						$activate = $this->activate_member( $phone, false, true );
 					}
-					$notif = get_option( 'mswa_deactivation_message' );
+					$notif = get_option( 'fonnletter_deactivation_message' );
 				}
 				if ( !empty( $activate ) && '' <> $notif ) {
 					echo $this->formatted_notification( $notif, $activate );
 				} else {
-					echo __( 'Channel ID is invalid', 'ms-wabroadcast' );
+					echo __( 'Channel ID is invalid', 'fonnletter' );
 				}
 			} else {
-				if ( '' <> get_option( 'mswa_default_info_message' ) ) {
-					echo get_option( 'mswa_default_info_message' );
+				if ( '' <> get_option( 'fonnletter_default_info_message' ) ) {
+					echo get_option( 'fonnletter_default_info_message' );
 				}
 			}
 		}
@@ -811,10 +843,10 @@ class MS_WA_Broadcast {
 	public function get_member_id_by_phone( $phone, $get_all = false ) {
 		$id = array();
 		$args = array(
-			'post_type' 		=> 'ms_wa_member',
+			'post_type' 		=> 'fonnletter_member',
 			'meta_query' 		=> array(
 				array(
-					'key' 		=> '_mswa_member_phone',
+					'key' 		=> '_fonnletter_member_phone',
 					'value'		=> $phone,
 					'compare'	=> '='
 				)
@@ -827,7 +859,7 @@ class MS_WA_Broadcast {
 			$args['meta_query']['relation'] = 'AND';
 			$args['meta_query'][] = array(
 				array(
-					'key' 		=> '_mswa_member_campaign_id',
+					'key' 		=> '_fonnletter_member_campaign_id',
 					'value'		=> $get_all,
 					'compare'	=> '='
 				)
@@ -861,17 +893,17 @@ class MS_WA_Broadcast {
 		if ( !empty( $ids ) ) {
 			foreach( $ids as $id ) {
 				if ( $activate ) {
-					update_post_meta( $id, '_mswa_member_status', 'active' );	
+					update_post_meta( $id, '_fonnletter_member_status', 'active' );	
 				} else {
-					update_post_meta( $id, '_mswa_member_status', 'inactive' );	
+					update_post_meta( $id, '_fonnletter_member_status', 'inactive' );	
 				}
 				$data[] = array(
 					'id' 			=> $id,
-					'name' 			=> get_post_meta( $id, '_mswa_member_name', true ),
-					'phone' 		=> get_post_meta( $id, '_mswa_member_phone', true ),
-					'email' 		=> get_post_meta( $id, '_mswa_member_email', true ),
-					'status' 		=> get_post_meta( $id, '_mswa_member_status', true ),
-					'campaign_id' 	=> get_post_meta( $id, '_mswa_member_campaign_id', true )
+					'name' 			=> get_post_meta( $id, '_fonnletter_member_name', true ),
+					'phone' 		=> get_post_meta( $id, '_fonnletter_member_phone', true ),
+					'email' 		=> get_post_meta( $id, '_fonnletter_member_email', true ),
+					'status' 		=> get_post_meta( $id, '_fonnletter_member_status', true ),
+					'campaign_id' 	=> get_post_meta( $id, '_fonnletter_member_campaign_id', true )
 				);
 			}
 			return $data[0];
@@ -897,4 +929,4 @@ class MS_WA_Broadcast {
 }
 
 // ok
-$GLOBALS['ms-wabroadcast'] = new MS_WA_Broadcast();
+$GLOBALS['fonnletter'] = new FONNLETTER_Plugin();
