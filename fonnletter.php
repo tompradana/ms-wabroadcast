@@ -21,4 +21,26 @@ if ( FONNLETTER_ENV === 'staging' ) {
 define( 'FONNLETTER_VERSION', $version );
 
 // includes
-include( FONNLETTER_DIR . 'includes/classes/class.fonnletter.php' );
+include_once( FONNLETTER_DIR . 'includes/classes/class.fonnletter.php' );
+
+/**
+ * [FONNLETTER description]
+ */
+function FONNLETTER() { 
+	return new FONNLETTER_Plugin();
+}
+
+/**
+ * Bckward compt
+ */
+$GLOBALS['fonnletter'] = FONNLETTER(); // new FONNLETTER_Plugin();
+
+/**
+ * Addon funcs
+ */
+add_action( 'plugins_loaded', 'fonnletter_addons' ); 
+function fonnletter_addons() {
+	if ( class_exists( 'WPCF7_ContactForm' ) ) {
+		include( FONNLETTER_DIR . 'includes/addons/cf7.fonnletter.php' );
+	}
+}

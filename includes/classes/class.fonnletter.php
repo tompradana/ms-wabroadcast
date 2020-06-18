@@ -93,12 +93,12 @@ class FONNLETTER_Plugin {
 		$class = 'notice notice-error';
 		$message = '';
 		if ( false === get_option( 'fonnletter_token' ) ) {
-		    $message = sprintf( __( 'Fonnte fresh install, please setup and add your Fonnte token <a href="%s">here</a>.', 'fonnletter' ), admin_url( 'admin.php?page=fonnletter-plugin-settings' ) );
+			$message = sprintf( __( 'Fonnte fresh install, please setup and add your Fonnte token <a href="%s">here</a>.', 'fonnletter' ), admin_url( 'admin.php?page=fonnletter-plugin-settings' ) );
 		} else if ( '' == get_option( 'fonnletter_token' ) ) {
 			$message = sprintf( __( 'Fonnte token missing, please add your Fonnte token <a href="%s">here</a>.', 'fonnletter' ), admin_url( 'admin.php?page=fonnletter-plugin-settings' ) );
 		}
 		if ( $message  ) 
-		    printf( '<div class="%1$s"><p>%2$s</p></div>', esc_attr( $class ), $message );
+			printf( '<div class="%1$s"><p>%2$s</p></div>', esc_attr( $class ), $message );
 	}
 
 	/**
@@ -250,14 +250,14 @@ class FONNLETTER_Plugin {
 	public function manage_fonnletter_campaign_custom_columns( $column, $post_id ) {
 		switch ( $column ) {
 			case 'shortcode':
-				echo '<input type="text" onClick="this.setSelectionRange(0, this.value.length)" value="[fonnletter_campaign id='.$post_id.']">';
-				break;
+			echo '<input type="text" onClick="this.setSelectionRange(0, this.value.length)" value="[fonnletter_campaign id='.$post_id.']">';
+			break;
 			case 'member':
-				echo $this->get_total_members( $post_id );
-				break;
+			echo $this->get_total_members( $post_id );
+			break;
 			case 'member_today':
-				echo $this->get_total_members( $post_id, true );
-				break;
+			echo $this->get_total_members( $post_id, true );
+			break;
 		}
 	}
 
@@ -267,37 +267,37 @@ class FONNLETTER_Plugin {
 	public function manage_fonnletter_member_custom_columns( $column, $post_id ) {
 		switch ( $column ) {
 			case 'campaign':
-				$campaign_id = get_post_meta( $post_id, $key = '_fonnletter_member_campaign_id', true );
-				if ( $campaign_id ) {
-					printf( '%s [%s]', get_the_title( $campaign_id ), $campaign_id );
-				} else {
-					echo '-';
-				}
-				break;
+			$campaign_id = get_post_meta( $post_id, $key = '_fonnletter_member_campaign_id', true );
+			if ( $campaign_id ) {
+				printf( '%s [%s]', get_the_title( $campaign_id ), $campaign_id );
+			} else {
+				echo '-';
+			}
+			break;
 			case 'phone':
-				$phone = get_post_meta( $post_id, $key = '_fonnletter_member_phone', true );
-				if ( $phone ) 
-					echo $phone;
-				else 
-					echo '-';
-				break;
+			$phone = get_post_meta( $post_id, $key = '_fonnletter_member_phone', true );
+			if ( $phone ) 
+				echo $phone;
+			else 
+				echo '-';
+			break;
 			case 'email':
-				$email = get_post_meta( $post_id, $key = '_fonnletter_member_email', true );
-				if ( $email ) 
-					echo $email;
-				else 
-					echo '-';
-				break;
+			$email = get_post_meta( $post_id, $key = '_fonnletter_member_email', true );
+			if ( $email ) 
+				echo $email;
+			else 
+				echo '-';
+			break;
 			case 'status':
-				$phone = get_post_meta( $post_id, $key = '_fonnletter_member_status', true );
-				if ( $phone == 'inactive' || false == $phone ) 
-					echo __( "Not active", 'fonnletter' ) . '<span style="display:inline-block; width:10px;height:10px;border-radius:500px;background-color:red;margin-left:10px"></span>';
-				else 
-					echo __( "Active", 'fonnletter' ) . '<span style="display:inline-block; width:10px;height:10px;border-radius:500px;background-color:green;margin-left:10px"></span>';
-				break;
+			$phone = get_post_meta( $post_id, $key = '_fonnletter_member_status', true );
+			if ( $phone == 'inactive' || false == $phone ) 
+				echo __( "Not active", 'fonnletter' ) . '<span style="display:inline-block; width:10px;height:10px;border-radius:500px;background-color:red;margin-left:10px"></span>';
+			else 
+				echo __( "Active", 'fonnletter' ) . '<span style="display:inline-block; width:10px;height:10px;border-radius:500px;background-color:green;margin-left:10px"></span>';
+			break;
 			case 'date':
-				echo get_the_date( 'c', $post_id );
-				break;
+			echo get_the_date( 'c', $post_id );
+			break;
 		}
 	}
 
@@ -310,144 +310,144 @@ class FONNLETTER_Plugin {
 
 		switch ( $action ) {
 			case 'send_message':
-				$url 		= $this->apiurl;
-				$token 		= get_option( 'fonnletter_token' );
-				$numbers 	= $this->get_phone_numbers( $_POST['campaign'], 'active' );
+			$url 		= $this->apiurl;
+			$token 		= get_option( 'fonnletter_token' );
+			$numbers 	= $this->get_phone_numbers( $_POST['campaign'], 'active' );
 			
-				$args 		= array(
-					'headers' => array(
-						'Authorization' => $token
-					),
-				);
+			$args 		= array(
+				'headers' => array(
+					'Authorization' => $token
+				),
+			);
 
-				$message = $_REQUEST['message'];
-				$message = str_replace('{{nama}}', '{nama}', $message );
-				$message = str_replace('{{name}}', '{nama}', $message );
+			$message = $_REQUEST['message'];
+			$message = str_replace('{{nama}}', '{nama}', $message );
+			$message = str_replace('{{name}}', '{nama}', $message );
 
-				$args['body'] = array(
-					'data' 	=> json_encode( $numbers ),
-					'text' 	=> $message . "\r\n\r\n" . 'Untuk berhenti berlangganan balas dengan *STOP* atau *UNSUBSCRIBE*.'
-				);
+			$args['body'] = array(
+				'data' 	=> json_encode( $numbers ),
+				'text' 	=> $message . "\r\n\r\n" . 'Untuk berhenti berlangganan balas dengan *STOP* atau *UNSUBSCRIBE*.'
+			);
 
-				$response = wp_remote_post( $url, $args );
-				if ( !is_wp_error( $response ) ) {
-					$response = json_decode( wp_remote_retrieve_body( $response ) );
-					if ( isset( $response->status ) && $response->status === true ) {
-						$ajaxresponse['code'] = 200;
-						$ajaxresponse['message'] = '✔️ Success';
-						$ajaxresponse['results'] = $response;
-					} else {
-						$ajaxresponse['message'] = '❗ Failed';
-						$ajaxresponse['results'] = $response;
-					}
+			$response = wp_remote_post( $url, $args );
+			if ( !is_wp_error( $response ) ) {
+				$response = json_decode( wp_remote_retrieve_body( $response ) );
+				if ( isset( $response->status ) && $response->status === true ) {
+					$ajaxresponse['code'] = 200;
+					$ajaxresponse['message'] = '✔️ Success';
+					$ajaxresponse['results'] = $response;
 				} else {
-					$ajaxresponse['message'] = '❌ Connection error';
+					$ajaxresponse['message'] = '❗ Failed';
+					$ajaxresponse['results'] = $response;
 				}
+			} else {
+				$ajaxresponse['message'] = '❌ Connection error';
+			}
 
-				break;
+			break;
 			case 'save_settings':
-				$settings = $this->settings;
-				foreach( $settings as $key ) {
-					if ( isset( $_POST[$key] ) ) {
-						update_option( $key, esc_attr( $_POST[$key] ) );
-					} else {
-						update_option( $key, false );
-					}
-				};
-				$ajaxresponse['code'] = 200;
-				$ajaxresponse['message'] = '✔️ Settings saved';
-				$ajaxresponse['results'] = $settings;
-				break;
+			$settings = $this->settings;
+			foreach( $settings as $key ) {
+				if ( isset( $_POST[$key] ) ) {
+					update_option( $key, esc_attr( $_POST[$key] ) );
+				} else {
+					update_option( $key, false );
+				}
+			};
+			$ajaxresponse['code'] = 200;
+			$ajaxresponse['message'] = '✔️ Settings saved';
+			$ajaxresponse['results'] = $settings;
+			break;
 			case 'reset_settings':
-				$settings = $this->settings;
-				foreach( $settings as $key ) {
-					delete_option( $key );
-				};
-				$ajaxresponse['code'] = 200;
-				$ajaxresponse['message'] = '✔️ Settings has been reset';
-				$ajaxresponse['results'] = $settings;
-				break;
+			$settings = $this->settings;
+			foreach( $settings as $key ) {
+				delete_option( $key );
+			};
+			$ajaxresponse['code'] = 200;
+			$ajaxresponse['message'] = '✔️ Settings has been reset';
+			$ajaxresponse['results'] = $settings;
+			break;
 			case 'submit_campaign':
-				if ( !wp_verify_nonce( $_REQUEST['fonnletter_submit_campaign_nonce'], 'fonnletter_submit_campaign' ) ) {
-					$ajaxresponse['message'] = 'Cheat\'in uh! :(';
-			    } else {
-			    	$phone 	= isset( $_POST['_fonnletter_input_phone'] ) && !empty( $_POST['_fonnletter_input_phone'] ) ? $_POST['_fonnletter_input_phone'] : false;
+			if ( !wp_verify_nonce( $_REQUEST['fonnletter_submit_campaign_nonce'], 'fonnletter_submit_campaign' ) ) {
+				$ajaxresponse['message'] = 'Cheat\'in uh! :(';
+			} else {
+				$phone 	= isset( $_POST['_fonnletter_input_phone'] ) && !empty( $_POST['_fonnletter_input_phone'] ) ? $_POST['_fonnletter_input_phone'] : false;
 
 			    	// error if phone not present
-			    	if ( false === $phone ) {
-			    		$ajaxresponse['message'] = 'WhatsApp number is required!';
-			    	} else {
+				if ( false === $phone ) {
+					$ajaxresponse['message'] = 'WhatsApp number is required!';
+				} else {
 			    		// name
-			    		$name 	= isset( $_POST['_fonnletter_input_name'] ) && !empty( $_POST['_fonnletter_input_name'] ) ? $_POST['_fonnletter_input_name'] : '';
+					$name 	= isset( $_POST['_fonnletter_input_name'] ) && !empty( $_POST['_fonnletter_input_name'] ) ? $_POST['_fonnletter_input_name'] : '';
 			    		// email
-			    		$email 	= isset( $_POST['_fonnletter_input_email'] ) && !empty( $_POST['_fonnletter_input_email'] ) ? $_POST['_fonnletter_input_email'] : '';
+					$email 	= isset( $_POST['_fonnletter_input_email'] ) && !empty( $_POST['_fonnletter_input_email'] ) ? $_POST['_fonnletter_input_email'] : '';
 
-			    		if ( $email && !is_email( $email ) ) {
+					if ( $email && !is_email( $email ) ) {
 			    			// invalid email
-			    			$ajaxresponse['message'] = 'Invalid email address!';	
-			    		} else {
+						$ajaxresponse['message'] = 'Invalid email address!';	
+					} else {
 			    			// reformat phone
-			    			$phone = preg_replace('/\s+/', '', $phone);
-			    			if ( !preg_match( '/^[1-9]\d{8,}$/', $phone ) ) {
-			    				$ajaxresponse['message'] = 'Phone number must be country code + phone number!';
-			    			} else {
+						$phone = preg_replace('/\s+/', '', $phone);
+						if ( !preg_match( '/^[1-9]\d{8,}$/', $phone ) ) {
+							$ajaxresponse['message'] = 'Phone number must be country code + phone number!';
+						} else {
 
-			    				if ( !$this->is_phone_registered( $phone, $_POST['campaign_id'] ) || ( 'on' == get_option( 'fonnletter_allow_samenumber' ) && $this->is_phone_registered( $phone ) ) ) {
+							if ( !$this->is_phone_registered( $phone, $_POST['campaign_id'] ) || ( 'on' == get_option( 'fonnletter_allow_samenumber' ) && $this->is_phone_registered( $phone ) ) ) {
 
-			    					if ( ! $this->is_phone_registered( $phone, $_POST['campaign_id'] ) ) {
+								if ( ! $this->is_phone_registered( $phone, $_POST['campaign_id'] ) ) {
 					    				// insert member
-					    				$autoactivate = 'on' == get_option( 'fonnletter_auto_activate_member' ) ? 'active' : 'inactive';
-					    				$member = wp_insert_post( array(
-					    					'post_type' 	=> 'fonnletter_member',
-					    					'post_title'	=> $name,
-					    					'post_status'	=> 'publish',
-					    					'meta_input'	=> array(
-					    						'_fonnletter_member_campaign_id' 	=> $_POST['campaign_id'],
-					    						'_fonnletter_member_status' 		=> $autoactivate,
-					    						'_fonnletter_member_name' 		=> ucfirst( $name ),
-					    						'_fonnletter_member_phone' 		=> $phone,
-					    						'_fonnletter_member_email' 		=> $email
-					    					)
-					    				), true );
+									$autoactivate = 'on' == get_option( 'fonnletter_auto_activate_member' ) ? 'active' : 'inactive';
+									$member = wp_insert_post( array(
+										'post_type' 	=> 'fonnletter_member',
+										'post_title'	=> $name,
+										'post_status'	=> 'publish',
+										'meta_input'	=> array(
+											'_fonnletter_member_campaign_id' 	=> $_POST['campaign_id'],
+											'_fonnletter_member_status' 		=> $autoactivate,
+											'_fonnletter_member_name' 		=> ucfirst( $name ),
+											'_fonnletter_member_phone' 		=> $phone,
+											'_fonnletter_member_email' 		=> $email
+										)
+									), true );
 
 					    				// ok
-					    				if ( !is_wp_error( $member ) ) {
+									if ( !is_wp_error( $member ) ) {
 					    					// send
-						    				if ( 'on' ==  get_option( 'fonnletter_wanotif' ) && '' != get_option( 'fonnletter_wanotif_message' ) ) {
-						    					$message = get_option( 'fonnletter_wanotif_message' );
+										if ( 'on' ==  get_option( 'fonnletter_wanotif' ) && '' != get_option( 'fonnletter_wanotif_message' ) ) {
+											$message = get_option( 'fonnletter_wanotif_message' );
 						    					// {{name}} {{phone}} {{email}} {{campaign_name}}
-						    					$message = str_replace( '{{name}}', $name, $message );
-						    					$message = str_replace( '{{phone}}', $phone, $message );
-						    					$message = str_replace( '{{email}}', $email, $message );
-						    					$message = str_replace( '{{campaign_name}}', get_the_title($_POST['campaign_id']), $message );
+											$message = str_replace( '{{name}}', $name, $message );
+											$message = str_replace( '{{phone}}', $phone, $message );
+											$message = str_replace( '{{email}}', $email, $message );
+											$message = str_replace( '{{campaign_name}}', get_the_title($_POST['campaign_id']), $message );
 
-						    					$phone = array( 
-						    						array(
-						    							'nama' 	=> $name,
-						    							'nomer'	=> $phone
-						    						)
-						    					);
-						    					$this->send_message( $phone, $message );
-						    				}
+											$phone = array( 
+												array(
+													'nama' 	=> $name,
+													'nomer'	=> $phone
+												)
+											);
+											$this->send_message( $phone, $message );
+										}
 
-					    					$ajaxresponse['code'] = 200;
-					    					$ajaxresponse['message'] = '✔️ Success';
-					    				} else {
-					    					$ajaxresponse['message'] = $member->get_error_message();
-					    				}
-					    			} else {
+										$ajaxresponse['code'] = 200;
+										$ajaxresponse['message'] = '✔️ Success';
+									} else {
+										$ajaxresponse['message'] = $member->get_error_message();
+									}
+								} else {
 					    				// Already registered
-				    					$ajaxresponse['message'] = 'Phone number already registered!';
-					    			}
-				    			} else {
+									$ajaxresponse['message'] = 'Phone number already registered!';
+								}
+							} else {
 				    				// Already registered
-				    				$ajaxresponse['message'] = 'Phone number already registered!';
-				    			}
-			    			}
-			    		}
-			    	}
+								$ajaxresponse['message'] = 'Phone number already registered!';
+							}
+						}
+					}
 				}
-				break;
+			}
+			break;
 		}
 
 		wp_send_json( $ajaxresponse );
@@ -481,27 +481,27 @@ class FONNLETTER_Plugin {
 	 */
 	public function fonnletter_broadcast_metabox_save( $post_id, $post ) {
 		if ( 'fonnletter_campaign' == $post->post_type ) {
-	        foreach ($_POST as $key => $value) {
-		    	if ( false !== strpos( $key, '_fonn' ) ) {
-			        update_post_meta(
-			            $post_id,
-			            $key,
-			            $value
-			        );
-			    }
-		    }
-	    } else if ( 'fonnletter_member' == $post->post_type ) {
-	    	foreach ($_POST as $key => $value) {
-		    	if ( false !== strpos( $key, '_fonn' ) ) {
-			        update_post_meta(
-			            $post_id,
-			            $key,
-			            $value
-			        );
-			    }
-		    }
-		    update_post_meta( $post_id, '_fonnletter_member_name', $post->post_title );
-	    }
+			foreach ($_POST as $key => $value) {
+				if ( false !== strpos( $key, '_fonn' ) ) {
+					update_post_meta(
+						$post_id,
+						$key,
+						$value
+					);
+				}
+			}
+		} else if ( 'fonnletter_member' == $post->post_type ) {
+			foreach ($_POST as $key => $value) {
+				if ( false !== strpos( $key, '_fonn' ) ) {
+					update_post_meta(
+						$post_id,
+						$key,
+						$value
+					);
+				}
+			}
+			update_post_meta( $post_id, '_fonnletter_member_name', $post->post_title );
+		}
 	}
 
 	/**
@@ -549,15 +549,15 @@ class FONNLETTER_Plugin {
 	 */
 	public function fonnletter_broadcast_shortcode( $atts ) {
 		$atts = shortcode_atts( array(
-	        'id' 	=> '',
-    	), $atts, 'fonnletter_campaign' );
-    	
-    	extract( $atts );
+			'id' 	=> '',
+		), $atts, 'fonnletter_campaign' );
 
-    	if ( '' == $id || ( $id != '' && get_post_type( $id ) !== 'fonnletter_campaign' ) ) {
-    		return __( 'Invalid campaign ID', 'fonnletter' );
-    	} else {
-    		$template = get_post_meta( $id, '_fonnletter_template', true );
+		extract( $atts );
+
+		if ( '' == $id || ( $id != '' && get_post_type( $id ) !== 'fonnletter_campaign' ) ) {
+			return __( 'Invalid campaign ID', 'fonnletter' );
+		} else {
+			$template = get_post_meta( $id, '_fonnletter_template', true );
 			$template_html = get_post_meta( $id, '_fonnletter_template_custom', true );
 			$form_title = get_post_meta( $id, '_fonnletter_form_title', true );
 			ob_start();
@@ -651,15 +651,15 @@ class FONNLETTER_Plugin {
 			$today = getdate();
 			$args['date_query'] = array(
 				array(
-		            'year'  => $today['year'],
-		            'month' => $today['mon'],
-		            'day'   => $today['mday'],
-		        )
+					'year'  => $today['year'],
+					'month' => $today['mon'],
+					'day'   => $today['mday'],
+				)
 		      	// array(
 		       	//  	'after' => $today,
 		       	//  	'inclusive' => true,
 		       	//  )
-		    );
+			);
 		}
 		$q = new WP_Query( $args );
 		wp_reset_postdata();
@@ -707,7 +707,7 @@ class FONNLETTER_Plugin {
 		}
 		wp_reset_postdata();
 
-	  	return $this->remove_duplicate_numbers( $numbers );
+		return $this->remove_duplicate_numbers( $numbers );
 	}
 
 	/**
@@ -770,7 +770,7 @@ class FONNLETTER_Plugin {
 
 	public function fonnletter_broadcast_rest_api_handler() {
 		header( 'Access-Control-Allow-Headers: Content-Type');
-        header( 'Content-Type: text/html; charset=UTF-8');
+		header( 'Content-Type: text/html; charset=UTF-8');
 		extract( $_POST );
 
 		if ( !$this->is_phone_registered( $phone ) ) {
@@ -927,6 +927,3 @@ class FONNLETTER_Plugin {
 		return $message;
 	}
 }
-
-// ok
-$GLOBALS['fonnletter'] = new FONNLETTER_Plugin();
