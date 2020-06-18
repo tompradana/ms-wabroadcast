@@ -3,5 +3,8 @@ MS-WABroadcast Plugin to collect subscriber and send broadcasr whatsapp message 
 
 ## Change Log
 
+### 1.1.0
+- integrasi dengan contact form 7
+
 ### 1.0.0
 - initial release
