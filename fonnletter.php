@@ -3,7 +3,7 @@
 Plugin Name: Fonnletter
 Description: Official plugin campaign & broadcast whatsapp from Fonnte
 Author: Fonnte
-Version: 1.0.0
+Version: 1.1.0
 Author URI: https://fonnte.com
 */
 
