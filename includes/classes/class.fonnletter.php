@@ -31,7 +31,7 @@ class FONNLETTER_Plugin {
 		add_action( 'admin_menu', array( $this, 'admin_menu' ) );
 		add_action( 'init', array( $this, 'register_post_type' ) );
 
-		foreach( array( 'fonnletter_campaign', 'fonnletter_member' ) as $post_type ) {
+		foreach( array( 'fonnletter_campaign', 'fonnletter_member', 'fonnletter_message' ) as $post_type ) {
 			// manage columns
 			add_filter( "manage_{$post_type}_posts_columns", array( $this, "manage_{$post_type}_columns" ) );
 			// set values
@@ -40,6 +40,8 @@ class FONNLETTER_Plugin {
 
 		add_action( 'add_meta_boxes_fonnletter_campaign', array( $this, 'admin_metabox_scripts' ) );
 		add_action( 'add_meta_boxes_fonnletter_member', array( $this, 'admin_metabox_scripts' ) );
+		add_action( 'add_meta_boxes_fonnletter_message', array( $this, 'admin_metabox_scripts' ) );
+
 		add_action( 'add_meta_boxes', array( $this, 'fonnletter_broadcast_metabox' ) );
 		add_action( 'save_post', array( $this, 'fonnletter_broadcast_metabox_save' ), 10, 2 );
 
@@ -55,6 +57,9 @@ class FONNLETTER_Plugin {
 
 		// delete member
 		add_action( 'wp_trash_post', array( $this, 'delete_member' ) );
+
+		// metabox
+		add_action( 'add_meta_boxes', array( $this, 'fonnletter_metabox' ) );
 	}
 
 	/**
@@ -191,6 +196,7 @@ class FONNLETTER_Plugin {
 				'name'			=> __( 'Campaigns', 'fonnletter' ),
 				'singular_name' => __( 'Campaign', 'fonnletter' ),
 				'add_new'		=> __( 'Add new campaign', 'fonnletter' ),
+				'add_new_item'  => __( 'Add New Campaign', 'fonnletter' ),
 				'search_items'	=> __( 'Search campaigns', 'fonnletter' ),
 				'not_found'		=> __( 'No campaigns found', 'fonnletter' )
 			),
@@ -198,7 +204,7 @@ class FONNLETTER_Plugin {
 			'public' 		=> false,
 			'show_ui' 		=> true,
 			'show_in_menu' 	=> 'fonnletter',
-			'show_in_rest'	=> true,
+			'show_in_rest'	=> false,
 			'menu_position'	=> 'fonnletter',
 			'supports'		=> array( 'title' )
 		);
@@ -207,15 +213,31 @@ class FONNLETTER_Plugin {
 		/**
 		 * Users
 		 */
-		$args['labels']			= array(
+		$args['labels']	= array(
 			'name'			=> __( 'Members', 'fonnletter' ),
 			'singular_name' => __( 'Member', 'fonnletter' ),
 			'add_new'		=> __( 'Add new member', 'fonnletter' ),
+			'add_new_item'  => __( 'Add New Member', 'fonnletter' ),
 			'search_items'	=> __( 'Search members', 'fonnletter' ),
 			'not_found'		=> __( 'No members found', 'fonnletter' )
 		);
-		$args['description'] 	= __( 'Member post type', 'fonnletter' );
+		$args['description'] = __( 'Member post type', 'fonnletter' );
 		register_post_type( 'fonnletter_member', $args );
+
+		/**
+		 * Follow-Up Message
+		 */
+		$args['labels']	= array(
+			'name'			=> __( 'Follow-Up Message', 'fonnletter' ),
+			'singular_name' => __( 'Follow-Up Message', 'fonnletter' ),
+			'add_new'		=> __( 'Add new message', 'fonnletter' ),
+			'add_new_item'  => __( 'Add New Follow-Up Message', 'fonnletter' ),
+			'search_items'	=> __( 'Search messages', 'fonnletter' ),
+			'not_found'		=> __( 'No messages found', 'fonnletter' )
+		);
+		$args['supports'] = array( 'title', 'editor' );
+		$args['description'] = __( 'Follow-Up message post type', 'fonnletter' );
+		register_post_type( 'fonnletter_message', $args );
 	}
 
 	/**
@@ -235,12 +257,13 @@ class FONNLETTER_Plugin {
 	 */
 	public function manage_fonnletter_member_columns( $columns ) {
 		unset( $columns['date'] );
+		unset( $columns['date'] );
 		$columns['title']		= __( 'Name', 'fonnletter' );
 		$columns['campaign'] 	= __( 'Campaign', 'fonnletter' );
 		$columns['phone'] 		= __( 'Phone/Whatsapp', 'fonnletter' );
 		$columns['email'] 		= __( 'Email Address', 'fonnletter' );
-		$columns['status'] 	= __( 'Status', 'fonnletter' );
-		$columns['date']		= __( 'Date Registered', 'fonnletter' );
+		$columns['status'] 		= __( 'Status', 'fonnletter' );
+		$columns['date_registered']	= __( 'Date Registered', 'fonnletter' );
 		return $columns;
 	}
 
@@ -295,8 +318,8 @@ class FONNLETTER_Plugin {
 			else 
 				echo __( "Active", 'fonnletter' ) . '<span style="display:inline-block; width:10px;height:10px;border-radius:500px;background-color:green;margin-left:10px"></span>';
 			break;
-			case 'date':
-			echo get_the_date( 'c', $post_id );
+			case 'date_registered':
+				echo get_the_date( 'd-m-Y H:i:s', $post_id );
 			break;
 		}
 	}
@@ -501,6 +524,16 @@ class FONNLETTER_Plugin {
 				}
 			}
 			update_post_meta( $post_id, '_fonnletter_member_name', $post->post_title );
+		} else if ( 'fonnletter_message' == $post->post_type ) {
+			foreach ($_POST as $key => $value) {
+				if ( false !== strpos( $key, '_fonn' ) ) {
+					update_post_meta(
+						$post_id,
+						$key,
+						$value
+					);
+				}
+			}
 		}
 	}
 
@@ -763,11 +796,74 @@ class FONNLETTER_Plugin {
 	 */
 	public function fonnletter_broadcast_rest_api() {
 		register_rest_route( 'fonnletter/v1', '/webhook', array(
-			'methods' => 'POST',
-			'callback' => array( $this, 'fonnletter_broadcast_rest_api_handler' )
+			'methods' 	=> 'POST',
+			'callback' 	=> array( $this, 'fonnletter_broadcast_rest_api_handler' )
+		) );
+
+		// wget --delete-after "YOURDOMAIN/wp-json/fonnletter/v1/followup"
+		register_rest_route( 'fonnletter/v1', '/followup', array(
+			'methods' 	=> 'GET',
+			'callback' 	=> array( $this, 'fonnletter_followup_rest_api_handler' )
 		) );
 	}
 
+	/**
+	 * [fonnletter_followup_rest_api_handler description]
+	 * @return [type] [description]
+	 */
+	public function fonnletter_followup_rest_api_handler() {
+		$members = get_posts( array(
+			'post_type' 		=> 'fonnletter_member',
+			'post_status' 		=> 'publish',
+			'numberposts'		=> -1
+		) );
+		wp_reset_query(); wp_reset_postdata();
+		
+		if ( !empty( $members ) ) {
+			$day = 60 * 60 * 24;
+			$current_time = current_time( 'timestamp' );
+			
+			foreach ( $members as $member ) {
+				$time_reg = strtotime( get_the_time( 'd-m-Y H:i:s', $member->ID ) );
+				$dsr = (int) ( ($current_time - $time_reg) / $day );
+
+				$get_messages = get_posts( array(
+					'post_type' 	=> 'fonnletter_message',
+					'post_status' 	=> 'publish',
+					'meta_key'		=> '_fonnletter_day_to_send',
+					'meta_value'	=> $dsr
+				) );
+				wp_reset_query(); wp_reset_postdata();
+
+				if ( !empty( $get_messages ) ) {
+					foreach( $get_messages as $message ) {
+						$name = get_the_title( $member->ID );
+						$phone = get_post_meta( $member->ID, '_fonnletter_member_phone', true );
+						$email = get_post_meta( $member->ID, '_fonnletter_member_email', true );
+						$campaign_id = get_post_meta( $member->ID, '_fonnletter_member_campaign_id', true );
+
+						$pesan = $this->formatted_notification( $message->post_content, array(
+							'name' 			=> $name,
+							'phone' 		=> $phone,
+							'email' 		=> $email,
+							'campaign_id'	=> $campaign_id
+						) );
+
+						// send
+						$this->send_message( array( array(
+							'nama' 	=> $name,
+							'nomer'	=> $phone
+						) ), $pesan );
+					}
+				}
+			}
+		}
+	}
+
+	/**
+	 * [fonnletter_broadcast_rest_api_handler description]
+	 * @return [type] [description]
+	 */
 	public function fonnletter_broadcast_rest_api_handler() {
 		header( 'Access-Control-Allow-Headers: Content-Type');
 		header( 'Content-Type: text/html; charset=UTF-8');
@@ -926,4 +1022,43 @@ class FONNLETTER_Plugin {
 
 		return $message;
 	}
+
+	/**
+	 * [fonnletter_metabox description]
+	 * @return [type] [description]
+	 */
+	public function fonnletter_metabox() {
+		add_meta_box( 'fonnletter_follow_up', 'Jadwal', array( $this, 'fonnletter_schedule_message_screen' ), 'fonnletter_message', 'normal', 'high' );
+	}
+
+	/**
+	 * [fonnletter_schedule_message_screen description]
+	 * @param  [type] $post_id [description]
+	 * @return [type]          [description]
+	 */
+	public function fonnletter_schedule_message_screen( $post ) {
+		include( FONNLETTER_DIR . 'views/admin/metaboxes/message-editor.php' );
+	}
+
+	/**
+	 * Manage admin columns
+	 */
+	public function manage_fonnletter_message_columns( $columns ) {
+		unset( $columns['date'] );
+		$columns['title']		= __( 'Judul', 'fonnletter' );
+		$columns['day_send_to'] = __( 'Dikirim pada hari ke', 'fonnletter' );
+		return $columns;
+	}
+
+	/**
+	 * Set values admin column
+	 */
+	public function manage_fonnletter_message_custom_columns( $column, $post_id ) {
+		switch ( $column ) {
+			case 'day_send_to':
+			echo get_post_meta( $post_id, '_fonnletter_day_to_send', true );
+			break;
+		}
+	}
+
 }
